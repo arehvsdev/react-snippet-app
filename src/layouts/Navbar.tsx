@@ -1,5 +1,5 @@
-import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
-import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Disclosure, DisclosureButton, DisclosurePanel, Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react'
+import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 const navigation = [
   { name: 'Dashboard', href: '#', current: true },
@@ -7,12 +7,13 @@ const navigation = [
   { name: 'Projects', href: '#', current: false },
   { name: 'Calendar', href: '#', current: false },
 ]
-
-function classNames(...classes) {
+function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(' ')
 }
-const Navbar = () => (
-  <Disclosure
+
+export default function Navbar() {
+  return (
+    <Disclosure
       as="nav"
       className="relative bg-gray-800/50 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10"
     >
@@ -128,6 +129,5 @@ const Navbar = () => (
         </div>
       </DisclosurePanel>
     </Disclosure>
-)
-
-export default Navbar
+  )
+}
