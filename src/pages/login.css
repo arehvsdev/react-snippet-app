@@ -1,0 +1,29 @@
+.login-left-panel {
+  background: linear-gradient(160deg, #3a0ca3 0%, #7209b7 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-left-panel::before,
+.login-left-panel::after {
+  content: "";
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  filter: blur(20px);
+}
+
+.login-left-panel::before {
+  width: 350px;
+  height: 350px;
+  top: -80px;
+  left: -150px;
+}
+
+.login-left-panel::after {
+  width: 500px;
+  height: 500px;
+  bottom: -200px;
+  right: -150px;
+  background-color: rgba(255, 255, 255, 0.07);
+}
