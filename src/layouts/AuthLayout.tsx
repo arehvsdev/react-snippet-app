@@ -1,42 +1,20 @@
-import { useState, useEffect, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import toast from "react-hot-toast";
-import { signOut } from "firebase/auth";
-import { auth } from "../firebase/firebase";
+import { useAuth } from "../../src/layouts/AuthContext";
 
-interface User {
-  name: string;
-  email: string;
-  role: string;
-}
 
 interface AuthLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
   type?: "login" | "register";
 }
 
 const AuthLayout = ({ children, type }: AuthLayoutProps) => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem("user");
-      }
-    }
-  }, []);
+  const { logout, isAuthenticated } = useAuth();
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
-      localStorage.removeItem("user");
+      logout();
       toast.success("Logged out successfully!");
-      setUser(null);
-      navigate("/login");
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -55,7 +33,7 @@ const AuthLayout = ({ children, type }: AuthLayoutProps) => {
           <Link to="/" className="text-2xl font-bold text-gray-800">
             SnippetApp
           </Link>
-          {user ? (
+          {isAuthenticated ? (
             <div className="flex items-center space-x-4">
               <Link
                 to="/profile"

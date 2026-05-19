@@ -2,9 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Input } from "../ui/UI";
-
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../../firebase/firebase";
+import { loginUser } from "../../services/authService";
 
 const LoginForm = () => {
   const navigate = useNavigate();
@@ -28,20 +26,11 @@ const LoginForm = () => {
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
-      const userCredential =
-        await signInWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        );
+      const loggedInUser = await loginUser(formData.email, formData.password);
       toast.success("Login successful!");
-      const userData = {
-        uid: userCredential.user.uid,
-        email: userCredential.user.email,
-      };
       localStorage.setItem(
         "user",
-        JSON.stringify(userData)
+        JSON.stringify(loggedInUser)
       );
       navigate("/profile");
     } catch (error: any) {

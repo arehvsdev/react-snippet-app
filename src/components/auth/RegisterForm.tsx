@@ -2,8 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Input, Select } from "../ui/UI";
-import { createUserWithEmailAndPassword, type User } from "firebase/auth";
-import { auth } from "../../firebase/firebase";
+import { registerUser } from "../../services/authService";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -36,11 +35,11 @@ const RegisterForm = () => {
   };
 
   // This function runs when the registration form is submitted.
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     // Destructure form data for easier access.
-    const { fullName, email, password, confirmPassword, role } = formData;
+    const { fullName, email, password, confirmPassword, role, phoneNumber } = formData;
 
     // --- Validation ---
     if (!fullName || !email || !password || !confirmPassword || !role) {
@@ -58,25 +57,17 @@ const RegisterForm = () => {
       return;
     }
 
-    // --- Backend Simulation ---
-    console.log("Form Submitted:", formData);
-    toast.success("Registration successful! Please log in.");
-
-    // Redirect to the login page after successful registration.
-    setTimeout(() => {
-      navigate("/login");
-    }, 1500);
-  };
-
-  const handleSignUp = async () => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      userCredential.user;
-      navigate("/login");
-    } catch (error) {
-      console.log(error);
+      await registerUser({ fullName, email, password, phoneNumber, role });
+      toast.success("Registration successful! Please log in.");
+      // Redirect to the login page after successful registration.
+      setTimeout(() => {
+        navigate("/login");
+      }, 1500);
+    } catch (error: any) {
+      toast.error(error.message || "Failed to register.");
+      console.error("Registration error:", error);
     }
-
   };
 
   return (
@@ -88,8 +79,7 @@ const RegisterForm = () => {
       <Input id="password" label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
       <Input id="confirmPassword" label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••" required />
       <button type="submit"
-        className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-colors duration-300 font-bold mt-2"
-        onClick={handleSignUp}>
+        className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-colors duration-300 font-bold mt-2">
         Register
       </button>
     </form>
@@ -97,5 +87,3 @@ const RegisterForm = () => {
 };
 
 export default RegisterForm;
-
-
