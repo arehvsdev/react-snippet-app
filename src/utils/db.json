@@ -1,0 +1,73 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "fullName": "John Doe",
+      "email": "agreesh777@gmail.com",
+      "phoneNumber": "(123) 456-7890",
+      "role": "Developer",
+      "password": "Uh1q@345Zhj&",
+      "active": true,
+      "plan": "free",
+      "createdAt": "2026-05-20T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "fullName": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "phoneNumber": "(987) 654-3210",
+      "role": "Student",
+      "password": "@sP6xW26977A",
+      "active": true,
+      "plan": "free",
+      "createdAt": "2026-05-19T14:20:00.000Z"
+    },
+    {
+      "id": 3,
+      "fullName": "Michael Brown",
+      "email": "michael.brown@example.com",
+      "phoneNumber": "(555) 123-4567",
+      "role": "Mentor",
+      "password": "M79p6k*7@eoh",
+      "active": true,
+      "plan": "free",
+      "createdAt": "2026-05-18T09:15:00.000Z"
+    },
+    {
+      "id": 4,
+      "fullName": "Emily Johnson",
+      "email": "emily.johnson@example.com",
+      "phoneNumber": "(222) 333-4444",
+      "role": "Recruiter",
+      "password": "hashed_password_abc123",
+      "active": true,
+      "plan": "free",
+      "createdAt": "2026-05-17T16:45:00.000Z"
+    }
+  ],
+  "snippets": [
+    {
+      "id": 1,
+      "title": "React useState Hook",
+      "description": "Basic example of useState for managing component state",
+      "language": "TypeScript",
+      "code": "import { useState } from 'react';\n\nfunction Counter() {\n  const [count, setCount] = useState(0);\n\n  return (\n    <button onClick={() => setCount(count + 1)}>\n      Count: {count}\n    </button>\n  );\n}",
+      "tags": ["react", "hooks"],
+      "userId": 1,
+      "createdAt": "2026-05-20T10:30:00.000Z"
+    },
+    {
+      "id": 2,
+      "title": "Array Map Function",
+      "description": "Transform array elements using map",
+      "language": "JavaScript",
+      "code": "const numbers = [1, 2, 3, 4, 5];\nconst doubled = numbers.map(num => num * 2);",
+      "tags": ["array", "functional"],
+      "userId": 1,
+      "createdAt": "2026-05-20T10:32:00.000Z"
+    }
+  ],
+  "categories": [],
+  "bookmarks": [],
+  "tags": []
+}

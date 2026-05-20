@@ -25,13 +25,49 @@ const RegisterForm = () => {
     { value: "recruiter", label: "Recruiter" },
   ];
 
-  // A single function to handle changes for all input fields.
-  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  // (legacy) single handler removed in favor of `handleFieldChange` below.
+
+  // Per-field validation messages
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateField = (name: string, value: string) => {
+    switch (name) {
+      case "fullName":
+        if (!value.trim()) return "Full name is required.";
+        return "";
+      case "email":
+        if (!value.trim()) return "Email is required.";
+        // simple email check
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
+          return "Enter a valid email.";
+        return "";
+      case "phoneNumber":
+        if (!value) return "";
+        if (!/^[0-9 ()+-]{7,20}$/.test(value))
+          return "Enter a valid phone number.";
+        return "";
+      case "role":
+        if (!value) return "Please select a role.";
+        return "";
+      case "password":
+        if (!value) return "Password is required.";
+        if (value.length < 6) return "Password must be at least 6 characters.";
+        return "";
+      case "confirmPassword":
+        if (!value) return "Please confirm your password.";
+        if (value !== formData.password) return "Passwords do not match.";
+        return "";
+      default:
+        return "";
+    }
+  };
+
+  const handleFieldChange = (
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
   };
 
   // This function runs when the registration form is submitted.
@@ -39,21 +75,19 @@ const RegisterForm = () => {
     e.preventDefault();
 
     // Destructure form data for easier access.
-    const { fullName, email, password, confirmPassword, role, phoneNumber } = formData;
+    const { fullName, email, password, role, phoneNumber } = formData;
 
-    // --- Validation ---
-    if (!fullName || !email || !password || !confirmPassword || !role) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
+    // Run validations for all fields
+    const newErrors: Record<string, string> = {};
+    Object.entries(formData).forEach(([key, val]) => {
+      const msg = validateField(key, String(val));
+      if (msg) newErrors[key] = msg;
+    });
 
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      return;
-    }
+    setErrors(newErrors);
 
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters long.");
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Please fix the highlighted errors.");
       return;
     }
 
@@ -64,22 +98,84 @@ const RegisterForm = () => {
       setTimeout(() => {
         navigate("/login");
       }, 1500);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to register.");
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to register.');
+      toast.error(msg);
       console.error("Registration error:", error);
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <Input id="fullName" label="Full Name" type="text" name="fullName" value={formData.fullName} onChange={handleChange} placeholder="John Doe" required />
-      <Input id="email" label="Email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" required />
-      <Input id="phoneNumber" label="Phone Number" type="text" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} placeholder="(123) 456-7890" />
-      <Select id="role" label="Role" name="role" value={formData.role} onChange={handleChange} placeholder="Select your role" options={roleOptions} required />
-      <Input id="password" label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
-      <Input id="confirmPassword" label="Confirm Password" type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••" required />
-      <button type="submit"
-        className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-colors duration-300 font-bold mt-2">
+      <Input
+        id="fullName"
+        label="Full Name"
+        type="text"
+        name="fullName"
+        value={formData.fullName}
+        onChange={handleFieldChange}
+        placeholder="John Doe"
+        required
+        error={errors.fullName}
+      />
+      <Input
+        id="email"
+        label="Email"
+        type="email"
+        name="email"
+        value={formData.email}
+        onChange={handleFieldChange}
+        placeholder="you@example.com"
+        required
+        error={errors.email}
+      />
+      <Input
+        id="phoneNumber"
+        label="Phone Number"
+        type="text"
+        name="phoneNumber"
+        value={formData.phoneNumber}
+        onChange={handleFieldChange}
+        placeholder="(123) 456-7890"
+        error={errors.phoneNumber}
+      />
+      <Select
+        id="role"
+        label="Role"
+        name="role"
+        value={formData.role}
+        onChange={handleFieldChange}
+        placeholder="Select your role"
+        options={roleOptions}
+        required
+        error={errors.role}
+      />
+      <Input
+        id="password"
+        label="Password"
+        type="password"
+        name="password"
+        value={formData.password}
+        onChange={handleFieldChange}
+        placeholder="••••••••"
+        required
+        error={errors.password}
+      />
+      <Input
+        id="confirmPassword"
+        label="Confirm Password"
+        type="password"
+        name="confirmPassword"
+        value={formData.confirmPassword}
+        onChange={handleFieldChange}
+        placeholder="••••••••"
+        required
+        error={errors.confirmPassword}
+      />
+      <button
+        type="submit"
+        className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition-colors duration-300 font-bold mt-2"
+      >
         Register
       </button>
     </form>

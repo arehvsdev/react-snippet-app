@@ -1,11 +1,11 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Input } from "../ui/UI";
 import { loginUser } from "../../services/authService";
+import { useAuth } from "../../layouts/AuthContext";
 
 const LoginForm = () => {
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   // We use the 'useState' hook to manage the form's data.
   const [formData, setFormData] = useState({
@@ -28,11 +28,7 @@ const LoginForm = () => {
     try {
       const loggedInUser = await loginUser(formData.email, formData.password);
       toast.success("Login successful!");
-      localStorage.setItem(
-        "user",
-        JSON.stringify(loggedInUser)
-      );
-      navigate("/profile");
+      login(loggedInUser);
     } catch (error: any) {
       toast.error(error.message);
     }
