@@ -33,7 +33,7 @@ export function CreateSnippet() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate('/snippet-feed')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -141,7 +141,7 @@ export function CreateSnippet() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/')}
+                onClick={() => navigate('/snippet-feed')}
                 className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
               >
                 Cancel
