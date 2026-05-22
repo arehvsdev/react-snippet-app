@@ -7,6 +7,7 @@ import { Layout } from './Layout';
 import { getDB } from '../services/dbService';
 
 export function SnippetList() {
+  const TextFieldAny = TextField as any;
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [snippets, setSnippets] = useState<any[]>([]);
@@ -44,11 +45,11 @@ export function SnippetList() {
             </button>
           </div>
 
-          <TextField
+          <TextFieldAny
             fullWidth
             placeholder="Search snippets by title, language, or tags..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: any) => setSearchQuery(e.target.value)}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">

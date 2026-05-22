@@ -3,23 +3,13 @@ import { CreateSnippet } from "../pages/CreateSnippet";
 import ProtectedRoute from "./ProtectedRoute";
 import { AdminRoute } from "./AdminRoute";
 import { Landing } from "../pages/Landing";
-import Login from "../pages/Login";
-import Register from "../pages/Register";
 import { Subscription } from "../pages/Subscription";
 import { Bookmarks } from "../pages/Bookmarks";
-import { Layout } from "../pages/Layout";
 import { SnippetFeed } from "../pages/SnippetFeed";
 import { Profile } from "../pages/Profile";
-
-// Placeholder for AdminDashboard. In a real app, this would be a separate component
-// with its own sub-routes and role-based access control.
-const AdminDashboard = () => (
-  <Layout>
-    <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-      <h1 className="text-3xl text-white">Admin Dashboard</h1>
-    </div>
-  </Layout>
-);
+import { AdminDashboard } from "../components/admin/AdminDashboard";
+import { ManageLanguages } from "../components/admin/ManageLanguages";
+import { ManageTags } from "../components/admin/ManageTags";
 
 // A simple 404 Not Found page. For a real app, you might want a more styled page
 // that uses the main Layout for authenticated users to feel more integrated.
@@ -48,6 +38,8 @@ const AppRoutes = () => {
         {/* Admin-only routes are nested here. ProtectedRoute ensures authentication, AdminRoute ensures authorization. */}
         <Route element={<AdminRoute />}>
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/languages" element={<ManageLanguages />} />
+          <Route path="/admin/tags" element={<ManageTags />} />
         </Route>
 
         {/* Redirects for old/alternative paths for consistency */}

@@ -1,5 +1,5 @@
 
-import { Check, Crown, Zap } from 'lucide-react';
+import { Check, Crown } from 'lucide-react';
 import { Layout } from './Layout';
 
 const plans = [

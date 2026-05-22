@@ -1,6 +1,6 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { Bell, Code2, Home, Plus, BookMarked, User } from 'lucide-react';
+import { Bell, Code2, Home, Plus, BookMarked } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
 
 interface LayoutProps {

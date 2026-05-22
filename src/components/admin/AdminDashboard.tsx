@@ -1,4 +1,4 @@
-import { Layout } from '../Layout';
+import { Layout } from '../../pages/Layout';
 import { Users, Code2, Eye, TrendingUp, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
@@ -145,7 +145,7 @@ export function AdminDashboard() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {snippetsByLanguage.map((entry, index) => (
+                    {snippetsByLanguage.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

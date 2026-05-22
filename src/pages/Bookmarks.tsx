@@ -1,7 +1,7 @@
+
+import { Bookmark, Calendar, Code2 } from 'lucide-react';
 import { Layout } from './Layout';
 import { Sidebar } from './Sidebar';
-import { Bookmark, Calendar, Code2 } from 'lucide-react';
-import { CodeSnippet } from './CodeSnippet';
 
 const bookmarkedSnippets = [
   {

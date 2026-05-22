@@ -12,6 +12,9 @@ export interface User {
   active: boolean;
   plan: string;
   createdAt: string;
+  username?: string;
+  bio?: string;
+  avatar?: string;
 }
 
 export interface DatabaseSchema {

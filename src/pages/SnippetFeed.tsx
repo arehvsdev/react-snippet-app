@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Clock, Bookmark, Heart, MessageCircle, Eye } from 'lucide-react';
+import { Heart, MessageCircle, Eye } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';

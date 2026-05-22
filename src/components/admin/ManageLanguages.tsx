@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Layout } from '../Layout';
+import { Layout } from '../../pages/Layout';
 import { Plus, Edit, Trash2, Code2 } from 'lucide-react';
 
 interface Language {

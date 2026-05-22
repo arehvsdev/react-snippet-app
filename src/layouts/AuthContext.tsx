@@ -9,11 +9,15 @@ import { useNavigate } from "react-router-dom";
 
 export interface User {
   uid: string;
+  id?: string;
   fullName: string;
   email: string;
   phoneNumber: string;
   role: string;
   createdAt: string;
+  username?: string;
+  bio?: string;
+  avatar?: string;
 }
 
 interface AuthContextType {

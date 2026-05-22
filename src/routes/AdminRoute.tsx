@@ -21,7 +21,7 @@ export const AdminRoute = () => {
     const { user } = useAuth(); // isAuthenticated is already checked by the parent ProtectedRoute
 
     // If the user is authenticated but is not an admin, show a "Not Authorized" page.
-    if (user?.role?.toLocaleLowerCase() !== "admin") {
+    if (user?.role?.toLocaleLowerCase() !== "Admin") {
         return <NotAuthorized />;
     }
 
