@@ -38,7 +38,7 @@ const LoginForm = () => {
     <form onSubmit={handleLogin}>
       <Input id="email" label="Email" type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" required />
       <Input id="password" label="Password" type="password" name="password" value={formData.password} onChange={handleChange} placeholder="••••••••" required />
-      <button type="submit" className="w-full bg-purple-600 text-white p-3 rounded-md hover:bg-purple-700 transition-colors duration-300 font-bold mt-2">
+      <button type="submit" className="w-full bg-[#2563eb] text-white p-3 rounded-md hover:bg-[#1d4ed8] transition-colors duration-300 font-bold mt-2">
         Login
       </button>
     </form>

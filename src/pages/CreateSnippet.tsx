@@ -1,137 +1,169 @@
-import AuthLayout from "../layouts/AuthLayout";
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
-
-interface SnippetFormData {
-  title: string;
-  language: string;
-  code: string;
-  description: string;
-  tags: string;
-}
+import { Layout } from './Layout';
 
 export function CreateSnippet() {
+  // 1. Navigation hook from react-router to change pages
   const navigate = useNavigate();
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SnippetFormData>();
 
-  const onSubmit = (data: SnippetFormData) => {
+  // 2. React State (useState): Managing form inputs individually
+  // This is simpler for beginners than using advanced libraries like react-hook-form
+  const [title, setTitle] = useState('');
+  const [language, setLanguage] = useState('');
+  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState('');
+  const [code, setCode] = useState('');
+
+  // 3. State to track validation errors
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // 4. Form Submission Handler
+  const handleSubmit = (e: React.FormEvent) => {
+    // Prevent the default browser form submission (which would refresh the page)
+    e.preventDefault();
+
+    // 5. Basic Validation checks
+    const newErrors: { [key: string]: string } = {};
+    if (!title || title.length < 3) {
+      newErrors.title = 'Title must be at least 3 characters';
+    }
+    if (!language) {
+      newErrors.language = 'Language is required';
+    }
+    if (!code || code.length < 10) {
+      newErrors.code = 'Code must be at least 10 characters';
+    }
+
+    // If there are errors, update the state and stop the submission
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    // 6. Data is valid! Format the snippet data
+    setErrors({});
     const snippet = {
-      ...data,
-      tags: data.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+      title,
+      language,
+      description,
+      code,
+      // Convert comma-separated string into an array of strings, trimming spaces
+      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
     };
+
     console.log('New snippet:', snippet);
+    
+    // 7. Navigate back to the home feed
     navigate('/');
   };
 
   return (
-    <AuthLayout>
-    <div className="min-h-screen bg-gray-50">
+    <Layout>
       <div className="max-w-4xl mx-auto px-4 py-8">
         <button
-          onClick={() => navigate('/snippet-feed')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Snippets
         </button>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Snippet</h1>
-          <p className="text-gray-600 mb-8">Add a new code snippet to your collection</p>
+        <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Create New Snippet</h1>
+          <p className="text-gray-400 mb-8">Add a new code snippet to your collection</p>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title Field */}
             <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                Title <span className="text-red-500">*</span>
+              <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
+                Title <span className="text-red-400">*</span>
               </label>
+              {/* Controlled Input: value is tied to state, onChange updates the state */}
               <input
                 id="title"
                 type="text"
-                {...register('title', {
-                  required: 'Title is required',
-                  minLength: { value: 3, message: 'Title must be at least 3 characters' }
-                })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${
-                  errors.title ? 'border-red-500' : 'border-gray-300'
-                }`}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className={`w-full px-4 py-2 bg-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 ${errors.title ? 'border-red-500' : 'border-gray-600'
+                  }`}
                 placeholder="e.g., React useState Hook"
               />
               {errors.title && (
-                <p className="mt-1 text-sm text-red-600">{errors.title.message}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.title}</p>
               )}
             </div>
 
+            {/* Language Field */}
             <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-2">
-                Language <span className="text-red-500">*</span>
+              <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-2">
+                Language <span className="text-red-400">*</span>
               </label>
               <input
                 id="language"
                 type="text"
-                {...register('language', { required: 'Language is required' })}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${
-                  errors.language ? 'border-red-500' : 'border-gray-300'
-                }`}
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className={`w-full px-4 py-2 bg-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 ${errors.language ? 'border-red-500' : 'border-gray-600'
+                  }`}
                 placeholder="e.g., JavaScript, TypeScript, Python"
               />
               {errors.language && (
-                <p className="mt-1 text-sm text-red-600">{errors.language.message}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.language}</p>
               )}
             </div>
 
+            {/* Description Field */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
                 Description
               </label>
               <input
                 id="description"
                 type="text"
-                {...register('description')}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500"
                 placeholder="Brief description of the snippet"
               />
             </div>
 
+            {/* Tags Field */}
             <div>
-              <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+              <label htmlFor="tags" className="block text-sm font-medium text-gray-300 mb-2">
                 Tags
               </label>
               <input
                 id="tags"
                 type="text"
-                {...register('tags')}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500"
                 placeholder="Comma-separated tags (e.g., react, hooks, state)"
               />
-              <p className="mt-1 text-sm text-gray-500">Separate multiple tags with commas</p>
+              <p className="mt-1 text-sm text-gray-400">Separate multiple tags with commas</p>
             </div>
 
+            {/* Code Field */}
             <div>
-              <label htmlFor="code" className="block text-sm font-medium text-gray-700 mb-2">
-                Code <span className="text-red-500">*</span>
+              <label htmlFor="code" className="block text-sm font-medium text-gray-300 mb-2">
+                Code <span className="text-red-400">*</span>
               </label>
               <textarea
                 id="code"
-                {...register('code', {
-                  required: 'Code is required',
-                  minLength: { value: 10, message: 'Code must be at least 10 characters' }
-                })}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
                 rows={12}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm ${
-                  errors.code ? 'border-red-500' : 'border-gray-300'
-                }`}
+                className={`w-full px-4 py-2 bg-gray-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm text-gray-100 placeholder-gray-500 ${errors.code ? 'border-red-500' : 'border-gray-600'
+                  }`}
                 placeholder="Paste your code here..."
               />
               {errors.code && (
-                <p className="mt-1 text-sm text-red-600">{errors.code.message}</p>
+                <p className="mt-1 text-sm text-red-400">{errors.code}</p>
               )}
             </div>
 
+            {/* Form Actions */}
             <div className="flex gap-4 pt-4">
               <button
                 type="submit"
@@ -141,8 +173,8 @@ export function CreateSnippet() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/snippet-feed')}
-                className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium text-gray-700"
+                onClick={() => navigate('/')}
+                className="px-6 py-3 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors font-medium text-gray-300"
               >
                 Cancel
               </button>
@@ -150,7 +182,6 @@ export function CreateSnippet() {
           </form>
         </div>
       </div>
-    </div>
-    </AuthLayout>
+    </Layout>
   );
 }

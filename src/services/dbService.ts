@@ -1,6 +1,6 @@
 import dbData from '../utils/db.json';
 
-const DB_KEY = 'snippet_app_db_v2';
+const DB_KEY = 'snippet_app_db_v3';
 
 export interface User {
   id: number;
@@ -27,7 +27,22 @@ const initializeDB = (): DatabaseSchema => {
   const stored = localStorage.getItem(DB_KEY);
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      // Sync users fields (username, bio, avatar), bookmarks, and categories from dbData if they are not yet in localStorage
+      const needsUserUpdate = parsed.users && parsed.users.some((u: any) => !u.username);
+      const needsBookmarks = !parsed.bookmarks || parsed.bookmarks.length === 0;
+      const needsCategories = !parsed.categories || parsed.categories.length === 0;
+      if (needsUserUpdate || needsBookmarks || needsCategories) {
+        const updated = {
+          ...parsed,
+          users: dbData.users,
+          bookmarks: dbData.bookmarks && dbData.bookmarks.length > 0 ? dbData.bookmarks : (parsed.bookmarks || []),
+          categories: parsed.categories && parsed.categories.length > 0 ? parsed.categories : dbData.categories
+        };
+        localStorage.setItem(DB_KEY, JSON.stringify(updated));
+        return updated;
+      }
+      return parsed;
     } catch (e) {
       console.error("Error parsing stored DB, resetting to default db.json:", e);
     }

@@ -1,79 +1,133 @@
-import { useState, useEffect } from "react";
-import AuthLayout from "../layouts/AuthLayout";
-import { CodeSnippet } from "../components/CodeSnippet";
-import { getDB } from "../services/dbService";
-import { Search } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { Clock, Bookmark, Heart, MessageCircle, Eye } from 'lucide-react';
+import { Sidebar } from './Sidebar';
+import { SnippetDetail } from './SnippetDetail';
+import { Layout } from './Layout';
+import { getDB } from '../services/dbService';
 
-const SnippetFeed = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [snippets, setSnippets] = useState<any[]>([]);
+export interface Snippet {
+  id: string;
+  title: string;
+  description: string;
+  language: string;
+  code: string;
+  tags: string[];
+  visibility: 'public' | 'private';
+  author: {
+    name: string;
+    avatar: string;
+    username: string;
+  };
+  createdAt: string;
+  likes: number;
+  comments: number;
+  views: number;
+  isBookmarked: boolean;
+}
+
+export function SnippetFeed() {
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
+  const [activeCategory, setActiveCategory] = useState<string>();
 
   useEffect(() => {
-    // Load snippets from local mock database
     const db = getDB();
-    setSnippets(db.snippets || []);
+    const formattedSnippets = db.snippets.map((s: any) => {
+      const user = db.users.find((u: any) => u.id === s.userId);
+      return {
+        ...s,
+        id: String(s.id),
+        author: {
+          name: user?.fullName || 'Unknown User',
+          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=random`,
+          username: user?.email?.split('@')[0] || 'unknown'
+        }
+      };
+    });
+    setSnippets(formattedSnippets);
+    if (formattedSnippets.length > 0) {
+      setSelectedSnippet(formattedSnippets[0]);
+    }
   }, []);
 
-  // Filter snippets based on query (title, language, or tags)
-  const filteredSnippets = snippets.filter((snippet) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      snippet.title.toLowerCase().includes(query) ||
-      snippet.language.toLowerCase().includes(query) ||
-      snippet.tags.some((tag: string) => tag.toLowerCase().includes(query))
-    );
-  });
-
   return (
-    <AuthLayout>
-      <div className="w-full bg-gray-50 border border-gray-200 rounded-2xl shadow-sm p-8 text-gray-900 mt-6">
-        {/* Header and Search */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-            Code Snippets
-          </h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            Browse and search through your collection of code snippets
-          </p>
+    <Layout>
+      <div className="flex min-h-[calc(100vh-4rem)]">
+        {/* Sidebar */}
+        <Sidebar activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
 
-          <div className="relative mt-6">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
+        {/* Snippet List */}
+        <div className="w-96 bg-gray-800 border-r border-gray-700">
+          <div className="p-4">
+            <h2 className="text-xl font-bold text-white mb-4">Recent Snippets</h2>
+            <div className="space-y-3">
+              {snippets.map((snippet) => (
+                <button
+                  key={snippet.id}
+                  onClick={() => setSelectedSnippet(snippet)}
+                  className={`w-full text-left p-4 rounded-lg transition-colors ${selectedSnippet?.id === snippet.id
+                      ? 'bg-gray-700 border-l-4 border-blue-500'
+                      : 'bg-gray-800/50 hover:bg-gray-700'
+                    }`}
+                >
+                  {/* Author Info */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <img
+                      src={snippet.author.avatar}
+                      alt={snippet.author.name}
+                      className="w-6 h-6 rounded-full"
+                    />
+                    <span className="text-xs text-gray-400">{snippet.author.name}</span>
+                    <span className="text-xs text-gray-500">• {snippet.createdAt}</span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="font-semibold text-white mb-1 line-clamp-2">
+                    {snippet.title}
+                  </h3>
+
+                  {/* Language Badge */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-block px-2 py-0.5 bg-blue-600 text-white text-xs rounded">
+                      {snippet.language}
+                    </span>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="flex items-center gap-3 text-xs text-gray-400">
+                    <span className="flex items-center gap-1">
+                      <Heart className="w-3 h-3" />
+                      {snippet.likes}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MessageCircle className="w-3 h-3" />
+                      {snippet.comments}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {snippet.views}
+                    </span>
+                  </div>
+                </button>
+              ))}
             </div>
-            <input
-              type="text"
-              placeholder="Search snippets by title, language, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-11 pr-4 py-3 bg-white border border-gray-300 rounded-xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-medium shadow-sm"
-            />
           </div>
         </div>
 
-        {/* Snippets List */}
-        <div className="space-y-6">
-          {filteredSnippets.length > 0 ? (
-            filteredSnippets.map((snippet) => (
-              <CodeSnippet
-                key={snippet.id}
-                title={snippet.title}
-                language={snippet.language}
-                code={snippet.code}
-                description={snippet.description}
-                tags={snippet.tags}
-              />
-            ))
+        {/* Detail View */}
+        <div className="flex-1 bg-gray-900">
+          {selectedSnippet ? (
+            <SnippetDetail snippet={selectedSnippet} />
           ) : (
-            <div className="text-center py-16 bg-white border border-gray-200 rounded-xl">
-              <p className="text-gray-500 font-medium">
-                No snippets found matching your search
-              </p>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                {/* <Code2 className="w-16 h-16 text-gray-600 mx-auto mb-4" /> */}
+                <p className="text-gray-400 text-lg">Select a snippet to view details</p>
+              </div>
             </div>
           )}
         </div>
       </div>
-    </AuthLayout>
+    </Layout>
   );
-};
-
-export default SnippetFeed;
+}

@@ -14,6 +14,8 @@ export interface User {
   phoneNumber: string;
   role: string;
   createdAt: string;
+  dob?: string;
+  jobTitle?: string;
 }
 
 interface AuthContextType {

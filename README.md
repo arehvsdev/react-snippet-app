@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Code Snippet App - Beginner's Guide 🚀
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Welcome to the Code Snippet App! This guide is created to help beginners understand the project structure, React concepts used, and how to run the app.
 
-Currently, two official plugins are available:
+## 🏃 How to Run the App
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Make sure you have Node.js installed.
+2. Open your terminal in the project folder.
+3. Install dependencies by running:
+   ```bash
+   npm install
+   ```
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+5. Open your browser and go to the link shown in your terminal (usually `http://localhost:5173`).
 
-## React Compiler
+## 📁 Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Here is a simple breakdown of the `src` directory:
 
-## Expanding the ESLint configuration
+- **`components/`**: Reusable parts of the UI, such as buttons, headers, or snippet cards.
+- **`pages/`**: Whole screens or pages like the `Landing.tsx` page or the `CreateSnippet.tsx` page.
+- **`layouts/`**: Wrappers for our pages. For instance, an `AuthLayout` ensures the user is logged in before showing the page.
+- **`routes/`**: This connects specific URLs to specific pages (e.g. `/create` goes to `CreateSnippet`).
+- **`services/`**: Files that handle data logic, like `dbService.ts` which simulates fetching data from a database using local storage.
+- **`utils/`**: Helper files. `db.json` lives here, serving as our mock database.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## ⚛️ React Concepts Used (Simplified)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+We've removed advanced libraries and patterns to make this project super beginner-friendly!
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 1. `useState` Hook
+We use `useState` to remember things inside a component, like what you typed in a form. 
+Example in `CreateSnippet.tsx`:
+```tsx
+const [title, setTitle] = useState('');
+// setTitle('New Title') updates the title on the screen immediately!
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. `useEffect` Hook
+We use `useEffect` to do things when the component first appears on the screen, like fetching data.
+Example in `SnippetFeed.tsx`:
+```tsx
+useEffect(() => {
+  const data = getDB();
+  setSnippets(data.snippets);
+}, []); // The empty array [] means "run this only once when the page loads"
 ```
+
+### 3. Props
+Props are like arguments passed to a function. We use them to pass data from a parent component down to a child component (e.g. passing a snippet's title to a `CodeSnippet` card).
+
+### 4. Forms without Complex Libraries
+Instead of using complex form libraries, we handle forms the standard React way using simple state and the `onSubmit` event, so you can clearly see how the data flows!
+
+## 🤝 Need Help?
+Explore the comments inside components like `CreateSnippet.tsx` and `Landing.tsx` (in the `src/pages` folder) where we explain how state and functions work step-by-step!
