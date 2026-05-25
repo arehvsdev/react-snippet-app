@@ -4,15 +4,85 @@ import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft } 
 import { CodeSnippet } from './CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
-import { getDB } from '../services/dbService';
+import { getDB, saveDB } from '../services/dbService';
+import toast from 'react-hot-toast';
 
 export function Profile() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'my-snippets' | 'bookmarks'>('my-snippets');
   const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
+
+  // Edit Profile States
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editUsername, setEditUsername] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [editAvatar, setEditAvatar] = useState('');
+  const [editPhoneNumber, setEditPhoneNumber] = useState('');
+
+  const handleOpenEditModal = () => {
+    const db = getDB();
+    const currentUserId = Number(user?.id || user?.uid || 1);
+    const foundUser = db.users.find(u => Number(u.id) === currentUserId);
+    
+    setEditFullName(foundUser?.fullName || user?.fullName || '');
+    setEditUsername(foundUser?.username || foundUser?.fullName.toLowerCase().replace(/\s+/g, '') || '');
+    setEditBio(foundUser?.bio || 'Full-stack developer passionate about clean code and open source');
+    setEditAvatar(foundUser?.avatar || '');
+    setEditPhoneNumber(foundUser?.phoneNumber || user?.phoneNumber || '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editFullName.trim()) {
+      toast.error('Full name is required');
+      return;
+    }
+
+    const db = getDB();
+    const currentUserId = Number(user?.id || user?.uid || 1);
+    
+    const userIndex = db.users.findIndex(u => Number(u.id) === currentUserId);
+    if (userIndex !== -1) {
+      db.users[userIndex] = {
+        ...db.users[userIndex],
+        fullName: editFullName,
+        username: editUsername,
+        bio: editBio,
+        avatar: editAvatar,
+        phoneNumber: editPhoneNumber
+      };
+      saveDB(db);
+      
+      const updatedUser = {
+        ...user,
+        fullName: editFullName,
+        username: editUsername,
+        bio: editBio,
+        avatar: editAvatar,
+        phoneNumber: editPhoneNumber
+      };
+      updateUser(updatedUser as any);
+      
+      setCurrentUserData({
+        name: editFullName,
+        email: db.users[userIndex].email,
+        username: editUsername,
+        bio: editBio,
+        avatar: editAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(editFullName)}&background=3b82f6&color=fff`,
+        joinedDate: db.users[userIndex].createdAt ? new Date(db.users[userIndex].createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+      });
+      
+      setIsEditModalOpen(false);
+      toast.success('Profile updated successfully!');
+    } else {
+      toast.error('User not found in database');
+    }
+  };
 
   useEffect(() => {
     if (!user) {
@@ -111,7 +181,10 @@ export function Profile() {
                 </div>
 
                 <div className="w-full space-y-3">
-                  <button className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-4 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium">
+                  <button 
+                    onClick={handleOpenEditModal}
+                    className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-4 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium"
+                  >
                     <Settings className="w-4 h-4" />
                     Edit Profile
                   </button>
@@ -242,6 +315,95 @@ export function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-zoom-in">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h3 className="text-xl font-bold text-white">Edit Profile</h3>
+              <button 
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Full Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Username (Handle)
+                </label>
+                <input
+                  type="text"
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  placeholder="e.g. johndoe"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="text"
+                  value={editPhoneNumber}
+                  onChange={(e) => setEditPhoneNumber(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  placeholder="e.g. (123) 456-7890"
+                />
+              </div>
+
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Short Bio
+                </label>
+                <textarea
+                  rows={3}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
