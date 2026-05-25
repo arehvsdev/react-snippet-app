@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 
 import { Bookmark, Calendar, Code2 } from 'lucide-react';
 import { Layout } from './Layout';
@@ -46,6 +47,23 @@ const bookmarkedSnippets = [
 ];
 
 export function Bookmarks() {
+=======
+import { useState, useEffect } from 'react';
+import { Bookmark, Calendar, Code2 } from 'lucide-react';
+import { Layout } from './Layout';
+import { Sidebar } from './Sidebar';
+import { getDB } from '../services/dbService';
+export function Bookmarks() {
+  const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
+
+  useEffect(() => {
+    const db = getDB();
+    setBookmarkedSnippets(db.bookmarks || []);
+  }, []);
+
+  const uniqueLanguages = new Set(bookmarkedSnippets.map(b => b.language)).size;
+
+>>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
   return (
     <Layout>
       <div className="flex min-h-[calc(100vh-4rem)]">
@@ -81,7 +99,11 @@ export function Bookmarks() {
                 <div className="flex items-center gap-3">
                   <Code2 className="w-5 h-5 text-green-400" />
                   <div>
+<<<<<<< HEAD
                     <p className="text-2xl font-bold text-white">5</p>
+=======
+                    <p className="text-2xl font-bold text-white">{uniqueLanguages}</p>
+>>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
                     <p className="text-sm text-gray-400">Languages</p>
                   </div>
                 </div>
