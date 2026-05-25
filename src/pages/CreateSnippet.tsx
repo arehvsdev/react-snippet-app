@@ -2,10 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Layout } from './Layout';
-<<<<<<< HEAD
-=======
 import { getDB, saveDB } from '../services/dbService';
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
 
 export function CreateSnippet() {
   // 1. Navigation hook from react-router to change pages
@@ -47,26 +44,18 @@ export function CreateSnippet() {
 
     // 6. Data is valid! Format the snippet data
     setErrors({});
-<<<<<<< HEAD
-    const snippet = {
-=======
     
     const db = getDB();
     const newSnippetId = db.snippets.length > 0 ? Math.max(...db.snippets.map(s => s.id)) + 1 : 1;
     
     const snippet = {
       id: newSnippetId,
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
       title,
       language,
       description,
       code,
       // Convert comma-separated string into an array of strings, trimming spaces
       tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-<<<<<<< HEAD
-    };
-
-=======
       userId: 1,
       createdAt: "Just now",
       likes: 0,
@@ -79,7 +68,6 @@ export function CreateSnippet() {
     db.snippets.unshift(snippet);
     saveDB(db);
 
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
     console.log('New snippet:', snippet);
     
     // 7. Navigate back to the home feed

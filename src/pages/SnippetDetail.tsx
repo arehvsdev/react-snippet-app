@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
-<<<<<<< HEAD
-=======
 import { getDB, saveDB } from '../services/dbService';
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
 
 interface Comment {
   id: string;
@@ -90,8 +87,6 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
     }
   };
 
-<<<<<<< HEAD
-=======
   const handleToggleBookmark = () => {
     const db = getDB();
     const newBookmarkState = !isBookmarked;
@@ -118,7 +113,6 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
     saveDB(db);
   };
 
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
   return (
     <div className="max-w-5xl mx-auto p-6">
       {/* Header */}
@@ -169,11 +163,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
             <span>{snippet.likes + (isLiked ? 1 : 0)}</span>
           </button>
           <button
-<<<<<<< HEAD
-            onClick={() => setIsBookmarked(!isBookmarked)}
-=======
             onClick={handleToggleBookmark}
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
               isBookmarked
                 ? 'bg-blue-600 text-white'

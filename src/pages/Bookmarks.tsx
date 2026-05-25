@@ -1,53 +1,3 @@
-<<<<<<< HEAD
-
-import { Bookmark, Calendar, Code2 } from 'lucide-react';
-import { Layout } from './Layout';
-import { Sidebar } from './Sidebar';
-
-const bookmarkedSnippets = [
-  {
-    id: '1',
-    title: 'Debounce Function',
-    language: 'JavaScript',
-    description: 'Classic debounce implementation for optimizing search inputs',
-    tags: ['javascript', 'performance'],
-    code: `function debounce(func, wait) {
-  let timeout;
-  return function executedFunction(...args) {
-    const later = () => {
-      clearTimeout(timeout);
-      func(...args);
-    };
-    clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
-  };
-}`,
-    bookmarkedAt: '2 days ago'
-  },
-  {
-    id: '2',
-    title: 'Local Storage Hook',
-    language: 'TypeScript',
-    description: 'React hook for localStorage with TypeScript',
-    tags: ['react', 'hooks', 'typescript'],
-    code: `function useLocalStorage<T>(key: string, initialValue: T) {
-  const [value, setValue] = useState<T>(() => {
-    const item = window.localStorage.getItem(key);
-    return item ? JSON.parse(item) : initialValue;
-  });
-
-  useEffect(() => {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  }, [key, value]);
-
-  return [value, setValue] as const;
-}`,
-    bookmarkedAt: '1 week ago'
-  }
-];
-
-export function Bookmarks() {
-=======
 import { useState, useEffect } from 'react';
 import { Bookmark, Calendar, Code2 } from 'lucide-react';
 import { Layout } from './Layout';
@@ -63,7 +13,6 @@ export function Bookmarks() {
 
   const uniqueLanguages = new Set(bookmarkedSnippets.map(b => b.language)).size;
 
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
   return (
     <Layout>
       <div className="flex min-h-[calc(100vh-4rem)]">
@@ -99,11 +48,7 @@ export function Bookmarks() {
                 <div className="flex items-center gap-3">
                   <Code2 className="w-5 h-5 text-green-400" />
                   <div>
-<<<<<<< HEAD
-                    <p className="text-2xl font-bold text-white">5</p>
-=======
                     <p className="text-2xl font-bold text-white">{uniqueLanguages}</p>
->>>>>>> 7fb3d4f (feat: add SnippetFeed and SnippetList components for displaying code snippets)
                     <p className="text-sm text-gray-400">Languages</p>
                   </div>
                 </div>
