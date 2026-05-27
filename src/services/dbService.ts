@@ -36,9 +36,17 @@ const initializeDB = (): DatabaseSchema => {
       const needsBookmarks = !parsed.bookmarks || parsed.bookmarks.length === 0;
       const needsCategories = !parsed.categories || parsed.categories.length === 0;
       if (needsUserUpdate || needsBookmarks || needsCategories) {
+        // Merge users instead of overwriting to preserve new registrations
+        const existingUsers = new Map(parsed.users.map((u: User) => [u.email, u]));
+        dbData.users.forEach((defaultUser: User) => {
+          if (!existingUsers.has(defaultUser.email)) {
+            existingUsers.set(defaultUser.email, defaultUser);
+          }
+        });
+
         const updated = {
           ...parsed,
-          users: dbData.users,
+          users: Array.from(existingUsers.values()),
           bookmarks: dbData.bookmarks && dbData.bookmarks.length > 0 ? dbData.bookmarks : (parsed.bookmarks || []),
           categories: parsed.categories && parsed.categories.length > 0 ? parsed.categories : dbData.categories
         };
