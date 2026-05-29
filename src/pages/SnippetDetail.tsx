@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
-import { getDB, saveDB } from '../services/dbService';
+import { useAuth } from '../layouts/AuthContext';
+import { toggleBookmarkInDB, saveCommentToDB } from '../services/snippetService';
 
 interface Comment {
   id: string;
@@ -58,6 +59,7 @@ const mockComments: Comment[] = [
 ];
 
 export function SnippetDetail({ snippet }: SnippetDetailProps) {
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(snippet.isBookmarked);
@@ -70,47 +72,38 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (newComment.trim()) {
+      const activeUser = user || { fullName: 'John Doe', avatar: '' };
       const comment: Comment = {
         id: Date.now().toString(),
         author: {
-          name: 'John Doe',
-          avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop'
+          name: activeUser.fullName,
+          avatar: activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.fullName)}&background=3b82f6&color=fff`
         },
         content: newComment,
         createdAt: 'Just now',
         likes: 0
       };
-      setComments([comment, ...comments]);
-      setNewComment('');
+      
+      try {
+        await saveCommentToDB(snippet.id, comment);
+        setComments([comment, ...comments]);
+        setNewComment('');
+      } catch (err) {
+        console.error('Failed to add comment:', err);
+      }
     }
   };
 
-  const handleToggleBookmark = () => {
-    const db = getDB();
-    const newBookmarkState = !isBookmarked;
-    setIsBookmarked(newBookmarkState);
-    
-    if (newBookmarkState) {
-      db.bookmarks.push({
-        id: snippet.id,
-        title: snippet.title,
-        language: snippet.language,
-        description: snippet.description,
-        tags: snippet.tags,
-        code: snippet.code,
-        bookmarkedAt: 'Just now'
-      });
-      const dbSnippet = db.snippets.find(s => String(s.id) === String(snippet.id));
-      if (dbSnippet) dbSnippet.isBookmarked = true;
-    } else {
-      db.bookmarks = db.bookmarks.filter(b => String(b.id) !== String(snippet.id));
-      const dbSnippet = db.snippets.find(s => String(s.id) === String(snippet.id));
-      if (dbSnippet) dbSnippet.isBookmarked = false;
+  const handleToggleBookmark = async () => {
+    const activeUserId = Number(user?.id || user?.uid || 1);
+    try {
+      const state = await toggleBookmarkInDB(snippet.id, activeUserId, snippet);
+      setIsBookmarked(state);
+    } catch (err) {
+      console.error('Failed to toggle bookmark:', err);
     }
-    
-    saveDB(db);
   };
 
   return (
