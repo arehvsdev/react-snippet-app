@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Layout } from './Layout';
-import { getDB, saveDB } from '../services/dbService';
+import { useAuth } from '../layouts/AuthContext';
+import { createSnippet } from '../services/snippetService';
 
 export function CreateSnippet() {
   // 1. Navigation hook from react-router to change pages
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   // 2. React State (useState): Managing form inputs individually
   // This is simpler for beginners than using advanced libraries like react-hook-form
@@ -20,7 +22,7 @@ export function CreateSnippet() {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   // 4. Form Submission Handler
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     // Prevent the default browser form submission (which would refresh the page)
     e.preventDefault();
 
@@ -45,33 +47,26 @@ export function CreateSnippet() {
     // 6. Data is valid! Format the snippet data
     setErrors({});
     
-    const db = getDB();
-    const newSnippetId = db.snippets.length > 0 ? Math.max(...db.snippets.map(s => s.id)) + 1 : 1;
-    
-    const snippet = {
-      id: newSnippetId,
-      title,
-      language,
-      description,
-      code,
-      // Convert comma-separated string into an array of strings, trimming spaces
-      tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-      userId: 1,
-      createdAt: "Just now",
-      likes: 0,
-      comments: 0,
-      views: 0,
-      isBookmarked: false,
-      visibility: "public"
-    };
+    try {
+      const activeUserId = Number(user?.id || user?.uid || 1);
+      
+      const snippet = {
+        title,
+        language,
+        description,
+        code,
+        // Convert comma-separated string into an array of strings, trimming spaces
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        userId: activeUserId
+      };
 
-    db.snippets.unshift(snippet);
-    saveDB(db);
-
-    console.log('New snippet:', snippet);
-    
-    // 7. Navigate back to the home feed
-    navigate('/');
+      await createSnippet(snippet);
+      
+      // 7. Navigate back to the home feed
+      navigate('/snippet-feed');
+    } catch (err) {
+      console.error('Failed to create snippet:', err);
+    }
   };
 
   return (

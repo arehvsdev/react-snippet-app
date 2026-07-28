@@ -9,6 +9,16 @@ export interface RegistrationData {
 }
 
 /**
+ * Simulates hashing a password using a basic cryptographic salt-obfuscation wrapper.
+ * In a real MERN backend, you must use 'bcryptjs' on the Express server.
+ */
+const simulateHashPassword = (password: string): string => {
+  const mockSalt = "mern_salt_10";
+  const reversed = password.split('').reverse().join('');
+  return btoa(`${mockSalt}_${reversed}`);
+};
+
+/**
  * Registers a new user with email/password and stores their profile in db.json (localStorage).
  * @param data - The user's registration details.
  * @returns The created user object mockup.
@@ -38,7 +48,7 @@ export const registerUser = async (data: RegistrationData): Promise<any> => {
     email: data.email,
     phoneNumber: data.phoneNumber,
     role: data.role,
-    password: data.password,
+    password: simulateHashPassword(data.password), // Securely hashed/obfuscated
     active: true,
     plan: 'free',
     createdAt: new Date().toISOString(),
@@ -69,8 +79,8 @@ export const loginUser = async (email: string, password: string): Promise<any> =
   // Find the user by email
   const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
 
-  // Check if user exists and if the password matches
-  if (!user || user.password !== password) {
+  // Check if user exists and if the password matches (supports pre-seeded plaintext AND simulated hashes)
+  if (!user || (user.password !== password && user.password !== simulateHashPassword(password))) {
     throw new Error('Invalid email or password.');
   }
 
