@@ -69,6 +69,7 @@ const AuthLayout = ({ children, type }: AuthLayoutProps) => {
               {children}
             </div>
           </section>
+          <Footer />
         </main>
       ) : (
         <main className="flex-grow container mx-auto p-6 flex flex-col">

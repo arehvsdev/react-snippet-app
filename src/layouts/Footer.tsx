@@ -13,7 +13,7 @@ export default function Footer() {
         
         {/* Left Section */}
         <p className="text-sm text-gray-300 text-center md:text-left">
-          © {new Date().getFullYear()} Your Company, Inc. All rights reserved.
+          © {new Date().getFullYear()} Code Snippet, Inc. All rights reserved.
         </p>
 
         {/* Right Section */}

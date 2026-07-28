@@ -46,7 +46,7 @@ export const registerUser = async (data: RegistrationData): Promise<any> => {
 
   db.users.push(newUser);
   saveDB(db);
-
+console.log('User registered successfully:', db.users);
   console.log('User registered! Database updated.');
 
   return { uid: String(newUser.id), email: newUser.email };
