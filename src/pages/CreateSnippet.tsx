@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
-import { createSnippet } from '../services/snippetService';
+import { createSnippet, getCategories } from '../services/snippetService';
 
 export function CreateSnippet() {
   // 1. Navigation hook from react-router to change pages
@@ -11,15 +11,28 @@ export function CreateSnippet() {
   const { user } = useAuth();
 
   // 2. React State (useState): Managing form inputs individually
-  // This is simpler for beginners than using advanced libraries like react-hook-form
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState('');
   const [code, setCode] = useState('');
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   // 3. State to track validation errors
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const list = await getCategories();
+        setCategories(list);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      }
+    };
+    loadCategories();
+  }, []);
 
   // 4. Form Submission Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,7 +70,7 @@ export function CreateSnippet() {
         code,
         // Convert comma-separated string into an array of strings, trimming spaces
         tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        userId: activeUserId
+        category: selectedCategory || undefined
       };
 
       await createSnippet(snippet);
@@ -122,6 +135,26 @@ export function CreateSnippet() {
               {errors.language && (
                 <p className="mt-1 text-sm text-red-400">{errors.language}</p>
               )}
+            </div>
+
+            {/* Category Field */}
+            <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
+                Category
+              </label>
+              <select
+                id="category"
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white"
+              >
+                <option value="">Select a category (Optional)</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Description Field */}

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft } from 'lucide-react';
 import { CodeSnippet } from './CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
-import { getDB, saveDB } from '../services/dbService';
+import { getUserProfile, updateUserProfile, updateUserAvatar } from '../services/user/user';
+import { getSnippets, getUserBookmarks } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 export function Profile() {
@@ -15,72 +16,132 @@ export function Profile() {
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
 
+  // Avatar upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Edit Profile States
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFullName, setEditFullName] = useState('');
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
-  const [editAvatar, setEditAvatar] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
 
+  const fetchProfile = async () => {
+    try {
+      const profile = await getUserProfile();
+      const activeUser = {
+        name: profile.fullName,
+        email: profile.email,
+        username: profile.username || profile.fullName.toLowerCase().replace(/\s+/g, ''),
+        bio: profile.bio || 'Full-stack developer passionate about clean code and open source',
+        avatar: profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName)}&background=3b82f6&color=fff`,
+        joinedDate: profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+        phoneNumber: profile.phoneNumber
+      };
+      setCurrentUserData(activeUser);
+      
+      // Keep auth context updated
+      updateUser({
+        ...user,
+        ...profile
+      } as any);
+    } catch (err: any) {
+      console.error("Failed to load profile:", err);
+      if (user) {
+        setCurrentUserData({
+          name: user.fullName,
+          email: user.email,
+          username: user.username || user.fullName.toLowerCase().replace(/\s+/g, ''),
+          bio: user.bio || 'Full-stack developer passionate about clean code and open source',
+          avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=fff`,
+          joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+          phoneNumber: user.phoneNumber
+        });
+      }
+    }
+  };
+
   const handleOpenEditModal = () => {
-    const db = getDB();
-    const currentUserId = Number(user?.id || user?.uid || 1);
-    const foundUser = db.users.find(u => Number(u.id) === currentUserId);
-    
-    setEditFullName(foundUser?.fullName || user?.fullName || '');
-    setEditUsername(foundUser?.username || foundUser?.fullName.toLowerCase().replace(/\s+/g, '') || '');
-    setEditBio(foundUser?.bio || 'Full-stack developer passionate about clean code and open source');
-    setEditAvatar(foundUser?.avatar || '');
-    setEditPhoneNumber(foundUser?.phoneNumber || user?.phoneNumber || '');
+    setEditFullName(currentUserData?.name || user?.fullName || '');
+    setEditUsername(currentUserData?.username || '');
+    setEditBio(currentUserData?.bio || '');
+    setEditPhoneNumber(currentUserData?.phoneNumber || user?.phoneNumber || '');
     setIsEditModalOpen(true);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editFullName.trim()) {
       toast.error('Full name is required');
       return;
     }
 
-    const db = getDB();
-    const currentUserId = Number(user?.id || user?.uid || 1);
-    
-    const userIndex = db.users.findIndex(u => Number(u.id) === currentUserId);
-    if (userIndex !== -1) {
-      db.users[userIndex] = {
-        ...db.users[userIndex],
+    try {
+      const updatedProfile = await updateUserProfile({
         fullName: editFullName,
         username: editUsername,
-        bio: editBio,
-        avatar: editAvatar,
-        phoneNumber: editPhoneNumber
-      };
-      saveDB(db);
+        phoneNumber: editPhoneNumber,
+        bio: editBio
+      });
+
+      updateUser({
+        ...user,
+        ...updatedProfile
+      });
+
+      setCurrentUserData({
+        name: updatedProfile.fullName,
+        email: updatedProfile.email,
+        username: updatedProfile.username,
+        bio: updatedProfile.bio,
+        avatar: updatedProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(updatedProfile.fullName)}&background=3b82f6&color=fff`,
+        joinedDate: updatedProfile.createdAt ? new Date(updatedProfile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+        phoneNumber: updatedProfile.phoneNumber
+      });
+
+      setIsEditModalOpen(false);
+      toast.success('Profile updated successfully!');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile');
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Image file size should be less than 2MB.");
+      return;
+    }
+
+    try {
+      toast.loading("Uploading avatar...", { id: "avatar-upload" });
+      const avatarUrl = await updateUserAvatar(file);
       
       const updatedUser = {
         ...user,
-        fullName: editFullName,
-        username: editUsername,
-        bio: editBio,
-        avatar: editAvatar,
-        phoneNumber: editPhoneNumber
+        avatar: avatarUrl
       };
       updateUser(updatedUser as any);
       
-      setCurrentUserData({
-        name: editFullName,
-        email: db.users[userIndex].email,
-        username: editUsername,
-        bio: editBio,
-        avatar: editAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(editFullName)}&background=3b82f6&color=fff`,
-        joinedDate: db.users[userIndex].createdAt ? new Date(db.users[userIndex].createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
-      });
+      setCurrentUserData((prev: any) => ({
+        ...prev,
+        avatar: avatarUrl
+      }));
       
-      setIsEditModalOpen(false);
-      toast.success('Profile updated successfully!');
-    } else {
-      toast.error('User not found in database');
+      toast.success("Avatar updated successfully!", { id: "avatar-upload" });
+    } catch (err: any) {
+      toast.error(err.message || "Failed to upload avatar", { id: "avatar-upload" });
     }
   };
 
@@ -90,35 +151,20 @@ export function Profile() {
       return;
     }
 
-    const db = getDB();
-    const currentUserId = Number(user.id || user.uid || 1);
-    const foundUser = db.users.find(u => Number(u.id) === currentUserId);
-    
-    const activeUser = foundUser ? {
-      name: foundUser.fullName,
-      email: foundUser.email,
-      username: foundUser.username || foundUser.fullName.toLowerCase().replace(/\s+/g, ''),
-      bio: foundUser.bio || 'Full-stack developer passionate about clean code and open source',
-      avatar: foundUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(foundUser.fullName)}&background=3b82f6&color=fff`,
-      joinedDate: foundUser.createdAt ? new Date(foundUser.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
-    } : {
-      name: user.fullName,
-      email: user.email,
-      username: user.fullName.toLowerCase().replace(/\s+/g, ''),
-      bio: 'Full-stack developer passionate about clean code and open source',
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=fff`,
-      joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+    fetchProfile();
+
+    const loadUserSnippetsAndBookmarks = async () => {
+      try {
+        const snippetsData = await getSnippets({ userId: user.id || user.uid });
+        setUserSnippets(snippetsData);
+        
+        const bookmarksData = await getUserBookmarks();
+        setBookmarkedSnippets(bookmarksData);
+      } catch (err) {
+        console.error("Failed to load user snippets or bookmarks:", err);
+      }
     };
-    
-    setCurrentUserData(activeUser);
-
-    // Load user's snippets
-    const snippets = db.snippets.filter((s: any) => Number(s.userId) === currentUserId);
-    setUserSnippets(snippets);
-
-    // Load bookmarked snippets
-    const bookmarks = db.bookmarks.filter((b: any) => Number(b.userId) === currentUserId);
-    setBookmarkedSnippets(bookmarks);
+    loadUserSnippetsAndBookmarks();
   }, [user, navigate]);
 
   if (!user || !currentUserData) {
@@ -154,9 +200,19 @@ export function Profile() {
                     alt={currentUserData.name}
                     className="w-32 h-32 rounded-full object-cover border-4 border-gray-700"
                   />
-                  <button className="absolute bottom-0 right-0 bg-gray-700 rounded-full p-2 shadow-lg border border-gray-600 hover:bg-gray-600 transition-colors">
+                  <button 
+                    onClick={handleAvatarClick}
+                    className="absolute bottom-0 right-0 bg-gray-700 rounded-full p-2 shadow-lg border border-gray-600 hover:bg-gray-600 transition-colors"
+                  >
                     <UserIcon className="w-4 h-4 text-gray-300" />
                   </button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleAvatarChange} 
+                    className="hidden" 
+                    accept="image/*"
+                  />
                 </div>
 
                 <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
@@ -347,13 +403,13 @@ export function Profile() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Username (Handle)
+                  Username (Handle) <span className="text-xs text-gray-500">(Cannot be changed)</span>
                 </label>
                 <input
                   type="text"
+                  disabled
                   value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                  className="w-full px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed outline-none transition"
                   placeholder="e.g. johndoe"
                 />
               </div>

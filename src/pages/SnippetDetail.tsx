@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
-import { toggleBookmarkInDB, saveCommentToDB } from '../services/snippetService';
+import { toggleBookmarkInDB, saveCommentToDB, getComments } from '../services/snippetService';
+import toast from 'react-hot-toast';
 
 interface Comment {
   id: string;
@@ -35,36 +36,13 @@ interface SnippetDetailProps {
   };
 }
 
-const mockComments: Comment[] = [
-  {
-    id: '1',
-    author: {
-      name: 'Alex Turner',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop'
-    },
-    content: 'This is really helpful! I\'ve been looking for a clean implementation of this pattern.',
-    createdAt: '1 hour ago',
-    likes: 5
-  },
-  {
-    id: '2',
-    author: {
-      name: 'Lisa Park',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop'
-    },
-    content: 'Great snippet! One suggestion - you might want to add cleanup for the timeout in case the component unmounts.',
-    createdAt: '30 minutes ago',
-    likes: 12
-  }
-];
-
 export function SnippetDetail({ snippet }: SnippetDetailProps) {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(snippet.isBookmarked);
   const [newComment, setNewComment] = useState('');
-  const [comments, setComments] = useState(mockComments);
+  const [comments, setComments] = useState<Comment[]>([]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(snippet.code);
@@ -74,37 +52,43 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
 
   const handleAddComment = async () => {
     if (newComment.trim()) {
-      const activeUser = user || { fullName: 'John Doe', avatar: '' };
-      const comment: Comment = {
-        id: Date.now().toString(),
-        author: {
-          name: activeUser.fullName,
-          avatar: activeUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeUser.fullName)}&background=3b82f6&color=fff`
-        },
-        content: newComment,
-        createdAt: 'Just now',
-        likes: 0
-      };
-      
       try {
-        await saveCommentToDB(snippet.id, comment);
-        setComments([comment, ...comments]);
+        const savedComment = await saveCommentToDB(snippet.id, newComment);
+        setComments([savedComment, ...comments]);
         setNewComment('');
-      } catch (err) {
-        console.error('Failed to add comment:', err);
+        toast.success("Comment added successfully!");
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to add comment');
       }
     }
   };
 
   const handleToggleBookmark = async () => {
-    const activeUserId = Number(user?.id || user?.uid || 1);
+    if (!user) {
+      toast.error("Please login to bookmark snippets.");
+      return;
+    }
     try {
-      const state = await toggleBookmarkInDB(snippet.id, activeUserId, snippet);
+      const state = await toggleBookmarkInDB(snippet.id);
       setIsBookmarked(state);
-    } catch (err) {
-      console.error('Failed to toggle bookmark:', err);
+      toast.success(state ? "Snippet saved to bookmarks!" : "Snippet removed from bookmarks.");
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to toggle bookmark');
     }
   };
+
+  useEffect(() => {
+    setIsBookmarked(snippet.isBookmarked);
+    const loadComments = async () => {
+      try {
+        const list = await getComments(snippet.id);
+        setComments(list);
+      } catch (err) {
+        console.error("Failed to load comments:", err);
+      }
+    };
+    loadComments();
+  }, [snippet]);
 
   return (
     <div className="max-w-5xl mx-auto p-6">
@@ -214,7 +198,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         <div className="mb-6">
           <div className="flex gap-3">
             <img
-              src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop"
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`}
               alt="Your avatar"
               className="w-10 h-10 rounded-full"
             />

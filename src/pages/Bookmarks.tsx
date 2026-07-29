@@ -2,13 +2,20 @@ import { useState, useEffect } from 'react';
 import { Bookmark, Calendar, Code2 } from 'lucide-react';
 import { Layout } from './Layout';
 import { Sidebar } from './Sidebar';
-import { getDB } from '../services/dbService';
+import { getUserBookmarks } from '../services/snippetService';
 export function Bookmarks() {
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
 
   useEffect(() => {
-    const db = getDB();
-    setBookmarkedSnippets(db.bookmarks || []);
+    const loadBookmarks = async () => {
+      try {
+        const data = await getUserBookmarks();
+        setBookmarkedSnippets(data);
+      } catch (err) {
+        console.error("Failed to load bookmarks:", err);
+      }
+    };
+    loadBookmarks();
   }, []);
 
   const uniqueLanguages = new Set(bookmarkedSnippets.map(b => b.language)).size;

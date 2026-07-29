@@ -1,4 +1,12 @@
-import { getDB, saveDB } from './dbService';
+const API_BASE_URL = "http://localhost:5000/api";
+
+const getHeaders = () => {
+  const token = localStorage.getItem("token");
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { "Authorization": `Bearer ${token}` } : {})
+  };
+};
 
 export interface SnippetData {
   title: string;
@@ -6,104 +14,241 @@ export interface SnippetData {
   description: string;
   code: string;
   tags: string[];
-  userId: number;
+  category?: string;
 }
 
+const normalizeSnippet = (s: any) => {
+  const authorName = s.createdBy?.name || "Unknown User";
+  const authorAvatar = s.createdBy?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=3b82f6&color=fff`;
+  const authorUsername = s.createdBy?.username || "unknown";
+
+  return {
+    ...s,
+    id: String(s._id),
+    author: {
+      name: authorName,
+      avatar: authorAvatar,
+      username: authorUsername
+    },
+    comments: s.commentsCount || s.comments || 0,
+    createdAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'Just now'
+  };
+};
+
+const normalizeComment = (c: any) => {
+  const authorName = c.userId?.name || "Unknown User";
+  const authorAvatar = c.userId?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=3b82f6&color=fff`;
+
+  return {
+    id: String(c._id),
+    author: {
+      name: authorName,
+      avatar: authorAvatar
+    },
+    content: c.content,
+    createdAt: c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'Just now',
+    likes: c.likes || 0
+  };
+};
+
 /**
- * Saves a new snippet to the mock database.
+ * Fetches all snippets (optionally filtered by query params).
+ */
+export const getSnippets = async (filters?: { userId?: string; visibility?: string }): Promise<any[]> => {
+  const queryParams = new URLSearchParams();
+  if (filters?.userId) queryParams.append("userId", filters.userId);
+  if (filters?.visibility) queryParams.append("visibility", filters.visibility);
+
+  const url = `${API_BASE_URL}/snippets${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to fetch snippets.");
+  }
+
+  const list = resData.snippets || resData.data || [];
+  return list.map(normalizeSnippet);
+};
+
+/**
+ * Fetches a single snippet by ID.
+ */
+export const getSnippetById = async (id: string): Promise<any> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to fetch snippet details.");
+  }
+
+  const s = resData.snippet || resData.data;
+  return normalizeSnippet(s);
+};
+
+/**
+ * Saves a new snippet to the MongoDB database.
  */
 export const createSnippet = async (data: SnippetData): Promise<any> => {
-  // Simulate API lag
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  const response = await fetch(`${API_BASE_URL}/snippets`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({
+      title: data.title,
+      language: data.language,
+      description: data.description,
+      code: data.code,
+      tags: data.tags,
+      category: data.category || undefined
+    })
+  });
 
-  const db = getDB();
-  const newSnippetId = db.snippets.length > 0 ? Math.max(...db.snippets.map((s) => s.id)) + 1 : 1;
+  const resData = await response.json();
+  if (!response.ok) {
+    const errorMsg = resData.errors && resData.errors.length > 0
+      ? resData.errors.map((e: any) => e.message).join(", ")
+      : (resData.message || "Failed to create snippet.");
+    throw new Error(errorMsg);
+  }
 
-  const newSnippet = {
-    id: newSnippetId,
-    title: data.title,
-    language: data.language,
-    description: data.description,
-    code: data.code,
-    tags: data.tags,
-    userId: data.userId,
-    createdAt: "Just now",
-    likes: 0,
-    comments: 0,
-    views: 0,
-    isBookmarked: false,
-    visibility: "public" as const,
-  };
-
-  db.snippets.unshift(newSnippet);
-  saveDB(db);
-
-  return newSnippet;
+  const s = resData.snippet || resData.data;
+  return normalizeSnippet(s);
 };
 
 /**
- * Toggles a snippet bookmark state in the database.
+ * Updates an existing snippet.
  */
-export const toggleBookmarkInDB = async (snippetId: string, userId: number, snippetInfo: any): Promise<boolean> => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+export const updateSnippet = async (id: string, data: Partial<SnippetData>): Promise<any> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify(data)
+  });
 
-  const db = getDB();
-  
-  // Ensure bookmarks array exists
-  if (!db.bookmarks) db.bookmarks = [];
-
-  const isAlreadyBookmarked = db.bookmarks.some(
-    (b) => String(b.id) === String(snippetId) && Number(b.userId) === Number(userId)
-  );
-
-  const newBookmarkState = !isAlreadyBookmarked;
-
-  if (newBookmarkState) {
-    db.bookmarks.push({
-      id: Number(snippetId),
-      title: snippetInfo.title,
-      language: snippetInfo.language,
-      description: snippetInfo.description,
-      tags: snippetInfo.tags,
-      code: snippetInfo.code,
-      userId: userId,
-      bookmarkedAt: 'Just now'
-    });
-    
-    const dbSnippet = db.snippets.find((s) => String(s.id) === String(snippetId));
-    if (dbSnippet) dbSnippet.isBookmarked = true;
-  } else {
-    db.bookmarks = db.bookmarks.filter(
-      (b) => !(String(b.id) === String(snippetId) && Number(b.userId) === Number(userId))
-    );
-    
-    const dbSnippet = db.snippets.find((s) => String(s.id) === String(snippetId));
-    if (dbSnippet) dbSnippet.isBookmarked = false;
+  const resData = await response.json();
+  if (!response.ok) {
+    const errorMsg = resData.errors && resData.errors.length > 0
+      ? resData.errors.map((e: any) => e.message).join(", ")
+      : (resData.message || "Failed to update snippet.");
+    throw new Error(errorMsg);
   }
 
-  saveDB(db);
-  return newBookmarkState;
+  const s = resData.snippet || resData.data;
+  return normalizeSnippet(s);
 };
 
 /**
- * Appends a comment to a snippet (local state side is updated by callers).
+ * Deletes a snippet.
  */
-export const saveCommentToDB = async (snippetId: string, comment: any): Promise<any> => {
-  await new Promise((resolve) => setTimeout(resolve, 100));
+export const deleteSnippet = async (id: string): Promise<any> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
+    method: "DELETE",
+    headers: getHeaders()
+  });
 
-  const db = getDB();
-  const dbSnippet = db.snippets.find((s) => String(s.id) === String(snippetId));
-  
-  if (dbSnippet) {
-    if (!dbSnippet.commentsCount) {
-      dbSnippet.commentsCount = (dbSnippet.comments || 0) + 1;
-    } else {
-      dbSnippet.commentsCount += 1;
-    }
-    // Sync comments metadata back to the master list
-    dbSnippet.comments = dbSnippet.commentsCount;
-    saveDB(db);
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to delete snippet.");
   }
-  
-  return comment;
+
+  return resData;
+};
+
+/**
+ * Toggles a snippet bookmark state in the backend database.
+ */
+export const toggleBookmarkInDB = async (snippetId: string, _userId?: number, _snippetInfo?: any): Promise<boolean> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/bookmarks`, {
+    method: "POST",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to toggle bookmark.");
+  }
+
+  // Returns true if now bookmarked, false if unbookmarked
+  return resData.bookmarked || (resData.data && resData.data.bookmarked);
+};
+
+/**
+ * Fetches user bookmarks from the backend database.
+ */
+export const getUserBookmarks = async (): Promise<any[]> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/my/bookmarks`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to fetch user bookmarks.");
+  }
+
+  const list = resData.bookmarks || resData.data || [];
+  return list.map(normalizeSnippet);
+};
+
+/**
+ * Fetches comments for a snippet.
+ */
+export const getComments = async (snippetId: string): Promise<any[]> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/comments`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to fetch comments.");
+  }
+
+  const list = resData.comments || resData.data || [];
+  return list.map(normalizeComment);
+};
+
+/**
+ * Appends a comment to a snippet.
+ */
+export const saveCommentToDB = async (snippetId: string, content: string): Promise<any> => {
+  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/comments`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify({ content })
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    const errorMsg = resData.errors && resData.errors.length > 0
+      ? resData.errors.map((e: any) => e.message).join(", ")
+      : (resData.message || "Failed to save comment.");
+    throw new Error(errorMsg);
+  }
+
+  const comment = resData.comment || resData.data;
+  return normalizeComment(comment);
+};
+
+/**
+ * Fetches all categories.
+ */
+export const getCategories = async (): Promise<any[]> => {
+  const response = await fetch(`${API_BASE_URL}/categories`, {
+    method: "GET",
+    headers: getHeaders()
+  });
+
+  const resData = await response.json();
+  if (!response.ok) {
+    throw new Error(resData.message || "Failed to fetch categories.");
+  }
+
+  return resData.categories || resData.data || [];
 };

@@ -3,7 +3,7 @@ import { Heart, MessageCircle, Eye } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';
-import { getDB } from '../services/dbService';
+import { getSnippets } from '../services/snippetService';
 
 export interface Snippet {
   id: string;
@@ -31,23 +31,18 @@ export function SnippetFeed() {
   const [activeCategory, setActiveCategory] = useState<string>();
 
   useEffect(() => {
-    const db = getDB();
-    const formattedSnippets = db.snippets.map((s: any) => {
-      const user = db.users.find((u: any) => u.id === s.userId);
-      return {
-        ...s,
-        id: String(s.id),
-        author: {
-          name: user?.fullName || 'Unknown User',
-          avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=random`,
-          username: user?.email?.split('@')[0] || 'unknown'
+    const loadSnippets = async () => {
+      try {
+        const data = await getSnippets();
+        setSnippets(data);
+        if (data.length > 0) {
+          setSelectedSnippet(data[0]);
         }
-      };
-    });
-    setSnippets(formattedSnippets);
-    if (formattedSnippets.length > 0) {
-      setSelectedSnippet(formattedSnippets[0]);
-    }
+      } catch (err) {
+        console.error("Failed to load snippets:", err);
+      }
+    };
+    loadSnippets();
   }, []);
 
   return (

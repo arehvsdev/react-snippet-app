@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Bookmark, Code2, Home, CreditCard, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../layouts/AuthContext';
-import { getDB } from '../services/dbService';
+import { getCategories, getUserBookmarks } from '../services/snippetService';
 
 interface Category {
   id: string;
@@ -19,11 +19,36 @@ export function Sidebar({ activeCategory, onCategorySelect }: SidebarProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [bookmarkCount, setBookmarkCount] = useState(0);
 
   useEffect(() => {
-    const db = getDB();
-    setCategories(db.categories || []);
-  }, []);
+    const loadCategories = async () => {
+      try {
+        const list = await getCategories();
+        const formatted = list.map((c: any) => ({
+          id: String(c._id),
+          name: c.name,
+          count: c.count || 0
+        }));
+        setCategories(formatted);
+      } catch (err) {
+        console.error("Failed to load categories:", err);
+      }
+    };
+
+    const loadBookmarkCount = async () => {
+      if (!user) return;
+      try {
+        const list = await getUserBookmarks();
+        setBookmarkCount(list.length);
+      } catch (err) {
+        console.error("Failed to load bookmarks count:", err);
+      }
+    };
+
+    loadCategories();
+    loadBookmarkCount();
+  }, [user]);
 
   return (
     <div className="w-64 bg-gray-800 border-r border-gray-700 h-[calc(100vh-4rem)] overflow-y-auto sticky top-16">
@@ -43,7 +68,11 @@ export function Sidebar({ activeCategory, onCategorySelect }: SidebarProps) {
           >
             <Bookmark className="w-5 h-5" />
             <span className="font-medium">Bookmarks</span>
-            <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">8</span>
+            {user && (
+              <span className="ml-auto bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                {bookmarkCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => navigate('/subscription')}

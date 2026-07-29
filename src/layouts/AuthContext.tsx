@@ -41,14 +41,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const login = (userData: User) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+  const login = (userData: User & { token?: string }) => {
+    const { token, ...userWithoutToken } = userData;
+    if (token) {
+      localStorage.setItem("token", token);
+    }
+    localStorage.setItem("user", JSON.stringify(userWithoutToken));
+    setUser(userWithoutToken);
     navigate("/profile");
   };
 
   const logout = () => {
     localStorage.removeItem("user");
+    localStorage.removeItem("token");
     setUser(null);
     navigate("/");
   };

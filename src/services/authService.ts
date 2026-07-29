@@ -1,5 +1,3 @@
-import { getDB, saveDB } from './dbService';
-
 export interface RegistrationData {
   fullName: string;
   email: string;
@@ -8,88 +6,98 @@ export interface RegistrationData {
   role: string;
 }
 
-/**
- * Simulates hashing a password using a basic cryptographic salt-obfuscation wrapper.
- * In a real MERN backend, you must use 'bcryptjs' on the Express server.
- */
-const simulateHashPassword = (password: string): string => {
-  const mockSalt = "mern_salt_10";
-  const reversed = password.split('').reverse().join('');
-  return btoa(`${mockSalt}_${reversed}`);
-};
+const API_BASE_URL = "http://localhost:5000/api";
 
 /**
- * Registers a new user with email/password and stores their profile in db.json (localStorage).
+ * Registers a new user with the MongoDB backend.
  * @param data - The user's registration details.
  * @returns The created user object mockup.
  */
 export const registerUser = async (data: RegistrationData): Promise<any> => {
-  console.log('Registering user with data:', data);
+  console.log('Registering user on backend with data:', data);
 
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  // Automatically generate a valid unique lowercase username
+  let cleanUsername = data.fullName.toLowerCase().replace(/[^a-z0-9_]/g, "");
+  if (cleanUsername.length < 3) {
+    cleanUsername = "user_" + cleanUsername;
+  }
+  const username = cleanUsername.substring(0, 20) + Math.floor(100 + Math.random() * 900);
 
-  const db = getDB();
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: data.fullName,
+      username: username,
+      email: data.email,
+      password: data.password,
+      phonenumber: data.phoneNumber,
+      role: data.role
+    })
+  });
 
-  // Check if user already exists
-  const emailExists = db.users.some(
-    user => user.email.toLowerCase() === data.email.toLowerCase()
-  );
-  if (emailExists) {
-    throw new Error('Email already in use.');
+  const resData = await response.json();
+
+  if (!response.ok) {
+    const errorMsg = resData.errors && resData.errors.length > 0
+      ? resData.errors.map((e: any) => e.message).join(", ")
+      : (resData.message || "Failed to register.");
+    throw new Error(errorMsg);
   }
 
-  // Create a new user ID (incrementing from max current ID)
-  const nextId = db.users.reduce((max, u) => u.id > max ? u.id : max, 0) + 1;
-
-  const newUser = {
-    id: nextId,
-    fullName: data.fullName,
-    email: data.email,
-    phoneNumber: data.phoneNumber,
-    role: data.role,
-    password: simulateHashPassword(data.password), // Securely hashed/obfuscated
-    active: true,
-    plan: 'free',
-    createdAt: new Date().toISOString(),
+  const backendUser = resData.user || resData.data;
+  return {
+    uid: backendUser._id,
+    id: backendUser._id,
+    email: backendUser.email
   };
-
-  db.users.push(newUser);
-  saveDB(db);
-console.log('User registered successfully:', db.users);
-  console.log('User registered! Database updated.');
-
-  return { uid: String(newUser.id), email: newUser.email };
 };
 
 /**
- * Logs in a user by checking credentials against the database.
+ * Logs in a user by checking credentials against the MongoDB database.
  * @param email The user's email.
  * @param password The user's password.
  * @returns The user object if login is successful.
  */
 export const loginUser = async (email: string, password: string): Promise<any> => {
-  console.log(`Attempting to log in user: ${email}`);
+  console.log(`Attempting to log in user via backend: ${email}`);
 
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
 
-  const db = getDB();
+  const resData = await response.json();
 
-  // Find the user by email
-  const user = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-  // Check if user exists and if the password matches (supports pre-seeded plaintext AND simulated hashes)
-  if (!user || (user.password !== password && user.password !== simulateHashPassword(password))) {
-    throw new Error('Invalid email or password.');
+  if (!response.ok) {
+    const errorMsg = resData.errors && resData.errors.length > 0
+      ? resData.errors.map((e: any) => e.message).join(", ")
+      : (resData.message || "Invalid email or password.");
+    throw new Error(errorMsg);
   }
 
-  console.log('Login successful for user:', user.email);
+  const token = resData.token;
+  const backendUser = resData.user || (resData.data && resData.data.user) || resData.data;
 
-  // Return the user data without the password, mapping id to uid for compatibility
-  const { password: _, ...userToReturn } = user;
+  if (!backendUser) {
+    throw new Error("User data not returned from server.");
+  }
+
+  console.log('Login successful for user:', backendUser.email);
+
+  // Return the user data mapped to frontend compatibility, including the JWT token
   return {
-    ...userToReturn,
-    uid: String(user.id),
+    uid: backendUser._id,
+    id: backendUser._id,
+    fullName: backendUser.name,
+    email: backendUser.email,
+    phoneNumber: backendUser.phonenumber,
+    role: backendUser.role,
+    createdAt: backendUser.createdAt,
+    username: backendUser.username,
+    bio: backendUser.bio || "",
+    avatar: backendUser.avatar || "",
+    token: token
   };
 };
