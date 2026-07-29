@@ -5,18 +5,29 @@ import { Sidebar } from './Sidebar';
 import { getUserBookmarks } from '../services/snippetService';
 export function Bookmarks() {
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     const loadBookmarks = async () => {
       try {
-        const data = await getUserBookmarks();
+        const data = await getUserBookmarks({ page, limit: 5 });
         setBookmarkedSnippets(data);
+        const pag = (data as any).pagination;
+        if (pag) {
+          setPagination(pag);
+          setTotalCount(pag.totalItems);
+        } else {
+          setPagination({ totalPages: 1, totalItems: data.length, currentPage: 1 });
+          setTotalCount(data.length);
+        }
       } catch (err) {
         console.error("Failed to load bookmarks:", err);
       }
     };
     loadBookmarks();
-  }, []);
+  }, [page]);
 
   const uniqueLanguages = new Set(bookmarkedSnippets.map(b => b.language)).size;
 
@@ -46,7 +57,7 @@ export function Bookmarks() {
                 <div className="flex items-center gap-3">
                   <Bookmark className="w-5 h-5 text-blue-400" />
                   <div>
-                    <p className="text-2xl font-bold text-white">{bookmarkedSnippets.length}</p>
+                    <p className="text-2xl font-bold text-white">{totalCount}</p>
                     <p className="text-sm text-gray-400">Total Bookmarks</p>
                   </div>
                 </div>
@@ -107,6 +118,29 @@ export function Bookmarks() {
                 </div>
               ))}
             </div>
+
+            {/* Pagination Controls */}
+            {pagination.totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg p-4">
+                <button
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
+                >
+                  Previous
+                </button>
+                <span className="text-sm font-semibold text-gray-400">
+                  Page {page} of {pagination.totalPages} (Total: {pagination.totalItems})
+                </span>
+                <button
+                  disabled={page >= pagination.totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            )}
 
             {bookmarkedSnippets.length === 0 && (
               <div className="text-center py-16">

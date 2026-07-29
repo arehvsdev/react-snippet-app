@@ -20,7 +20,6 @@ export interface User {
 export interface DatabaseSchema {
   users: User[];
   snippets: any[];
-  categories: any[];
   bookmarks: any[];
   tags: any[];
 }
@@ -31,11 +30,10 @@ const initializeDB = (): DatabaseSchema => {
   if (stored) {
     try {
       const parsed = JSON.parse(stored);
-      // Sync users fields (username, bio, avatar), bookmarks, and categories from dbData if they are not yet in localStorage
+      // Sync users fields (username, bio, avatar) and bookmarks from dbData if they are not yet in localStorage
       const needsUserUpdate = parsed.users && parsed.users.some((u: any) => !u.username);
       const needsBookmarks = !parsed.bookmarks || parsed.bookmarks.length === 0;
-      const needsCategories = !parsed.categories || parsed.categories.length === 0;
-      if (needsUserUpdate || needsBookmarks || needsCategories) {
+      if (needsUserUpdate || needsBookmarks) {
         // Merge users instead of overwriting to preserve new registrations
         const existingUsers = new Map(parsed.users.map((u: User) => [u.email, u]));
         dbData.users.forEach((defaultUser: User) => {
@@ -47,8 +45,7 @@ const initializeDB = (): DatabaseSchema => {
         const updated = {
           ...parsed,
           users: Array.from(existingUsers.values()),
-          bookmarks: dbData.bookmarks && dbData.bookmarks.length > 0 ? dbData.bookmarks : (parsed.bookmarks || []),
-          categories: parsed.categories && parsed.categories.length > 0 ? parsed.categories : dbData.categories
+          bookmarks: dbData.bookmarks && dbData.bookmarks.length > 0 ? dbData.bookmarks : (parsed.bookmarks || [])
         };
         localStorage.setItem(DB_KEY, JSON.stringify(updated));
         return updated;

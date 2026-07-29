@@ -186,7 +186,7 @@ export function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
             <a
               href="/admin/languages"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
@@ -200,6 +200,13 @@ export function AdminDashboard() {
             >
               <h3 className="text-lg font-semibold text-white mb-2">Manage Tags</h3>
               <p className="text-gray-400 text-sm">Create and organize tags</p>
+            </a>
+            <a
+              href="/admin/categories"
+              className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
+            >
+              <h3 className="text-lg font-semibold text-white mb-2">Manage Categories</h3>
+              <p className="text-gray-400 text-sm">Create and organize categories</p>
             </a>
             <a
               href="/admin/users"

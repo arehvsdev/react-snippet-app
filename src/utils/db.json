@@ -133,17 +133,6 @@
       "isBookmarked": true,
       "visibility": "public"
     }
-  ],
-  "categories": [
-    { "id": "1", "name": "JavaScript", "count": 145 },
-    { "id": "2", "name": "TypeScript", "count": 98 },
-    { "id": "3", "name": "Python", "count": 122 },
-    { "id": "4", "name": "React", "count": 87 },
-    { "id": "5", "name": "Node.js", "count": 65 },
-    { "id": "6", "name": "CSS", "count": 54 },
-    { "id": "7", "name": "Java", "count": 43 },
-    { "id": "8", "name": "Go", "count": 32 }
-  ],
   "bookmarks": [
     {
       "id": 10,

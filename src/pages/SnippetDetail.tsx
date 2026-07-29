@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send } from 'lucide-react';
+import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send, Edit, Trash2, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router';
 import { useAuth } from '../layouts/AuthContext';
-import { toggleBookmarkInDB, saveCommentToDB, getComments } from '../services/snippetService';
+import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 interface Comment {
@@ -13,6 +14,7 @@ interface Comment {
   content: string;
   createdAt: string;
   likes: number;
+  isLiked?: boolean;
 }
 
 interface SnippetDetailProps {
@@ -33,16 +35,31 @@ interface SnippetDetailProps {
     comments: number;
     views: number;
     isBookmarked: boolean;
+    isLiked?: boolean;
+    bookmarksCount?: number;
   };
 }
 
 export function SnippetDetail({ snippet }: SnippetDetailProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(snippet.isBookmarked);
-  const [newComment, setNewComment] = useState('');
+  const [likesCount, setLikesCount] = useState(snippet.likes);
+  const [isLiked, setIsLiked] = useState(snippet.isLiked || false);
+  const [isBookmarked, setIsBookmarked] = useState(snippet.isBookmarked || false);
+  const [bookmarksCount, setBookmarksCount] = useState(snippet.bookmarksCount || 0);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentPage, setCommentPage] = useState(1);
+  const [commentPagination, setCommentPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  
+  const isOwner = user && user.username && snippet.author?.username === user.username;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(snippet.code);
@@ -56,10 +73,75 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         const savedComment = await saveCommentToDB(snippet.id, newComment);
         setComments([savedComment, ...comments]);
         setNewComment('');
+        // Increment comments total count locally
+        setCommentPagination(prev => ({
+          ...prev,
+          totalItems: prev.totalItems + 1
+        }));
         toast.success("Comment added successfully!");
       } catch (err: any) {
         toast.error(err.message || 'Failed to add comment');
       }
+    }
+  };
+
+  const handleToggleLike = async () => {
+    if (!user) {
+      toast.error("Please login to like snippets.");
+      return;
+    }
+    const nextLiked = !isLiked;
+    setIsLiked(nextLiked);
+    setLikesCount(prev => prev + (nextLiked ? 1 : -1));
+
+    try {
+      const res = await toggleSnippetLikeInDB(snippet.id);
+      setIsLiked(res.liked);
+      setLikesCount(res.likes);
+    } catch (err: any) {
+      setIsLiked(!nextLiked);
+      setLikesCount(prev => prev + (nextLiked ? -1 : 1));
+      toast.error(err.message || 'Failed to toggle like');
+    }
+  };
+
+  const handleToggleCommentLike = async (commentId: string) => {
+    if (!user) {
+      toast.error("Please login to like comments.");
+      return;
+    }
+
+    let originalComment: Comment | undefined;
+    setComments(prev => prev.map(c => {
+      if (c.id === commentId) {
+        originalComment = { ...c };
+        const nextLiked = !c.isLiked;
+        return {
+          ...c,
+          isLiked: nextLiked,
+          likes: c.likes + (nextLiked ? 1 : -1)
+        };
+      }
+      return c;
+    }));
+
+    try {
+      const res = await toggleCommentLikeInDB(commentId);
+      setComments(prev => prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            isLiked: res.liked,
+            likes: res.likes
+          };
+        }
+        return c;
+      }));
+    } catch (err: any) {
+      if (originalComment) {
+        setComments(prev => prev.map(c => (c.id === commentId ? originalComment! : c)));
+      }
+      toast.error(err.message || 'Failed to like comment');
     }
   };
 
@@ -68,26 +150,94 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
       toast.error("Please login to bookmark snippets.");
       return;
     }
+    const nextBookmarked = !isBookmarked;
+    setIsBookmarked(nextBookmarked);
+    setBookmarksCount(prev => prev + (nextBookmarked ? 1 : -1));
+
     try {
-      const state = await toggleBookmarkInDB(snippet.id);
-      setIsBookmarked(state);
-      toast.success(state ? "Snippet saved to bookmarks!" : "Snippet removed from bookmarks.");
+      const res = await toggleBookmarkInDB(snippet.id);
+      setIsBookmarked(res.bookmarked);
+      setBookmarksCount(res.bookmarksCount);
+      toast.success(res.bookmarked ? "Snippet saved to bookmarks!" : "Snippet removed from bookmarks.");
     } catch (err: any) {
+      setIsBookmarked(!nextBookmarked);
+      setBookmarksCount(prev => prev + (nextBookmarked ? -1 : 1));
       toast.error(err.message || 'Failed to toggle bookmark');
     }
   };
 
-  useEffect(() => {
-    setIsBookmarked(snippet.isBookmarked);
-    const loadComments = async () => {
-      try {
-        const list = await getComments(snippet.id);
-        setComments(list);
-      } catch (err) {
-        console.error("Failed to load comments:", err);
+  const handleAddReply = async (parentId: string) => {
+    if (!replyContent.trim()) return;
+    try {
+      const savedReply = await saveCommentToDB(snippet.id, replyContent, parentId);
+      setComments(prev => [...prev, savedReply]);
+      setReplyContent('');
+      setReplyingTo(null);
+      setCommentPagination(prev => ({
+        ...prev,
+        totalItems: prev.totalItems + 1
+      }));
+      toast.success("Reply added successfully!");
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to add reply');
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editContent.trim()) return;
+    try {
+      const updated = await updateCommentInDB(commentId, editContent);
+      setComments(prev => prev.map(c => (c.id === commentId ? { ...c, content: updated.content } : c)));
+      setEditingCommentId(null);
+      setEditContent('');
+      toast.success("Comment updated successfully!");
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update comment');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm("Are you sure you want to delete this comment? This will also delete any replies.")) return;
+    try {
+      await deleteCommentInDB(commentId);
+      setComments(prev => prev.filter(c => c.id !== commentId && c.parentId !== commentId));
+      const deletedCount = comments.filter(c => c.id === commentId || c.parentId === commentId).length;
+      setCommentPagination(prev => ({
+        ...prev,
+        totalItems: Math.max(0, prev.totalItems - deletedCount)
+      }));
+      toast.success("Comment deleted successfully!");
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete comment');
+    }
+  };
+
+  const loadComments = async (page: number, append: boolean = false) => {
+    try {
+      setLoadingComments(true);
+      const res = await getComments(snippet.id, { page, limit: 5 });
+      const pagination = (res as any).pagination || { totalPages: 1, totalItems: res.length, currentPage: 1 };
+      
+      setCommentPagination(pagination);
+      if (append) {
+        setComments(prev => [...prev, ...res]);
+      } else {
+        setComments(res);
       }
-    };
-    loadComments();
+    } catch (err) {
+      console.error("Failed to load comments:", err);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  useEffect(() => {
+    setIsBookmarked(snippet.isBookmarked || false);
+    setIsLiked(snippet.isLiked || false);
+    setLikesCount(snippet.likes);
+    setBookmarksCount(snippet.bookmarksCount || 0);
+    setCommentPage(1);
+    loadComments(1, false);
   }, [snippet]);
 
   return (
@@ -129,31 +279,40 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         {/* Action Buttons */}
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setIsLiked(!isLiked)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            onClick={handleToggleLike}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${
               isLiked
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-red-600/10 text-red-400 border-red-500/20 hover:bg-red-600/20'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-transparent'
             }`}
           >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-            <span>{snippet.likes + (isLiked ? 1 : 0)}</span>
+            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-400' : ''}`} />
+            <span>{likesCount}</span>
           </button>
           <button
             onClick={handleToggleBookmark}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${
               isBookmarked
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-blue-600/10 text-blue-400 border-blue-500/20 hover:bg-blue-600/20'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-transparent'
             }`}
           >
-            <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current' : ''}`} />
-            <span>{isBookmarked ? 'Saved' : 'Save'}</span>
+            <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
+            <span>{isBookmarked ? 'Saved' : 'Save'} ({bookmarksCount})</span>
           </button>
           <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-300 hover:bg-gray-600 rounded-lg transition-colors">
             <Share2 className="w-5 h-5" />
             <span>Share</span>
           </button>
+          {isOwner && (
+            <button
+              onClick={() => navigate(`/edit/${snippet.id}`)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ml-auto font-medium"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Edit</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -190,7 +349,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         <div className="flex items-center gap-2 mb-6">
           <MessageCircle className="w-5 h-5 text-gray-400" />
           <h2 className="text-xl font-bold text-white">
-            Comments ({comments.length})
+            Comments ({commentPagination.totalItems})
           </h2>
         </div>
 
@@ -225,35 +384,260 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         </div>
 
         {/* Comments List */}
-        <div className="space-y-4">
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3">
-              <img
-                src={comment.author.avatar}
-                alt={comment.author.name}
-                className="w-10 h-10 rounded-full"
-              />
-              <div className="flex-1">
-                <div className="bg-gray-700 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-white">{comment.author.name}</span>
-                    <span className="text-xs text-gray-500">{comment.createdAt}</span>
+        <div className="space-y-6">
+          {comments.filter(c => !c.parentId).map((comment) => {
+            const rootReplies = comments.filter(r => r.parentId === comment.id);
+            const canEdit = user && user.username && comment.author.username === user.username;
+            const canDelete = user && user.username && (comment.author.username === user.username || isOwner);
+
+            return (
+              <div key={comment.id} className="space-y-3">
+                {/* Main Comment */}
+                <div className="flex gap-3">
+                  <img
+                    src={comment.author.avatar}
+                    alt={comment.author.name}
+                    className="w-10 h-10 rounded-full border border-gray-700"
+                  />
+                  <div className="flex-1">
+                    <div className="bg-gray-700/60 border border-gray-700/50 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-white text-sm">{comment.author.name}</span>
+                          <span className="text-[10px] text-gray-500">{comment.createdAt}</span>
+                        </div>
+                        
+                        {/* Edit/Delete Actions */}
+                        {(canEdit || canDelete) && (
+                          <div className="flex items-center gap-2">
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setEditingCommentId(comment.id);
+                                  setEditContent(comment.content);
+                                }}
+                                className="text-gray-400 hover:text-white transition-colors"
+                                title="Edit comment"
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-gray-400 hover:text-red-400 transition-colors"
+                                title="Delete comment"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {editingCommentId === comment.id ? (
+                        <div className="space-y-2 mt-1">
+                          <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                            rows={2}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingCommentId(null)}
+                              className="px-2.5 py-1 text-xs text-gray-450 hover:text-white"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleEditComment(comment.id)}
+                              disabled={!editContent.trim()}
+                              className="px-2.5 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-gray-300 text-sm whitespace-pre-wrap">{comment.content}</p>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2 ml-2">
+                      <button
+                        onClick={() => handleToggleCommentLike(comment.id)}
+                        className={`flex items-center gap-1 text-xs transition-colors ${
+                          comment.isLiked
+                            ? 'text-red-400 hover:text-red-300'
+                            : 'text-gray-400 hover:text-red-400'
+                        }`}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${comment.isLiked ? 'fill-current' : ''}`} />
+                        <span>{comment.likes}</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setReplyingTo(replyingTo === comment.id ? null : comment.id);
+                          setReplyContent('');
+                        }}
+                        className="text-xs text-gray-400 hover:text-white transition-colors"
+                      >
+                        Reply
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-gray-300">{comment.content}</p>
                 </div>
-                <div className="flex items-center gap-4 mt-2 ml-4">
-                  <button className="flex items-center gap-1 text-sm text-gray-400 hover:text-blue-400 transition-colors">
-                    <Heart className="w-4 h-4" />
-                    <span>{comment.likes}</span>
-                  </button>
-                  <button className="text-sm text-gray-400 hover:text-white transition-colors">
-                    Reply
-                  </button>
-                </div>
+
+                {/* Inline Reply Input */}
+                {replyingTo === comment.id && (
+                  <div className="ml-12 flex gap-3 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="flex-1">
+                      <textarea
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                        placeholder={`Reply to ${comment.author.name}...`}
+                        className="w-full px-3 py-2 bg-gray-900 border border-gray-650 rounded-lg text-sm text-white focus:ring-1 focus:ring-blue-500 outline-none resize-none placeholder-gray-600"
+                        rows={2}
+                      />
+                      <div className="flex justify-end gap-2 mt-1">
+                        <button
+                          onClick={() => setReplyingTo(null)}
+                          className="px-2.5 py-1 text-xs text-gray-455 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleAddReply(comment.id)}
+                          disabled={!replyContent.trim()}
+                          className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          Send Reply
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nested Replies List */}
+                {rootReplies.length > 0 && (
+                  <div className="ml-10 pl-3 border-l border-gray-750 space-y-3 pt-1">
+                    {rootReplies.map(reply => {
+                      const replyCanEdit = user && user.username && reply.author.username === user.username;
+                      const replyCanDelete = user && user.username && (reply.author.username === user.username || isOwner);
+
+                      return (
+                        <div key={reply.id} className="flex gap-2.5">
+                          <img
+                            src={reply.author.avatar}
+                            alt={reply.author.name}
+                            className="w-8 h-8 rounded-full border border-gray-750"
+                          />
+                          <div className="flex-1">
+                            <div className="bg-gray-800/40 border border-gray-750 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-white text-xs">{reply.author.name}</span>
+                                  <span className="text-[9px] text-gray-500">{reply.createdAt}</span>
+                                </div>
+
+                                {/* Reply Edit/Delete Actions */}
+                                {(replyCanEdit || replyCanDelete) && (
+                                  <div className="flex items-center gap-1.5">
+                                    {replyCanEdit && (
+                                      <button
+                                        onClick={() => {
+                                          setEditingCommentId(reply.id);
+                                          setEditContent(reply.content);
+                                        }}
+                                        className="text-gray-400 hover:text-white transition-colors"
+                                        title="Edit reply"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                    {replyCanDelete && (
+                                      <button
+                                        onClick={() => handleDeleteComment(reply.id)}
+                                        className="text-gray-400 hover:text-red-400 transition-colors"
+                                        title="Delete reply"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+
+                              {editingCommentId === reply.id ? (
+                                <div className="space-y-2 mt-1">
+                                  <textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-600 rounded-lg text-xs text-white focus:ring-1 focus:ring-blue-500 outline-none resize-none"
+                                    rows={2}
+                                  />
+                                  <div className="flex justify-end gap-1.5">
+                                    <button
+                                      onClick={() => setEditingCommentId(null)}
+                                      className="px-2 py-0.5 text-[10px] text-gray-455 hover:text-white"
+                                    >
+                                      Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => handleEditComment(reply.id)}
+                                      disabled={!editContent.trim()}
+                                      className="px-2 py-0.5 text-[10px] bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                                    >
+                                      Save
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-gray-350 text-xs whitespace-pre-wrap">{reply.content}</p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-1.5 ml-1">
+                              <button
+                                onClick={() => handleToggleCommentLike(reply.id)}
+                                className={`flex items-center gap-1 text-[10px] transition-colors ${
+                                  reply.isLiked
+                                    ? 'text-red-400 hover:text-red-300'
+                                    : 'text-gray-400 hover:text-red-400'
+                                }`}
+                              >
+                                <Heart className={`w-3 h-3 ${reply.isLiked ? 'fill-current' : ''}`} />
+                                <span>{reply.likes}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {/* Load More Button */}
+        {commentPagination.totalPages > commentPage && (
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={() => {
+                const nextPage = commentPage + 1;
+                setCommentPage(nextPage);
+                loadComments(nextPage, true);
+              }}
+              disabled={loadingComments}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-650 border border-gray-600 hover:border-gray-500 text-gray-300 hover:text-white rounded-lg text-sm font-semibold transition-all disabled:opacity-50"
+            >
+              {loadingComments ? 'Loading...' : 'Load More Comments'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
