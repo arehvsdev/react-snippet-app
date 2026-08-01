@@ -199,14 +199,14 @@ export function ManageTags() {
                   <div className="flex items-center gap-2 pt-2 border-t border-gray-700/50">
                     <button
                       onClick={() => openEditModal(tag)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-750 text-gray-300 hover:text-white hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-gray-300 hover:text-white hover:bg-gray-700 border border-gray-700 rounded-lg transition-colors text-sm font-medium"
                     >
                       <Edit className="w-4 h-4" />
                       Edit
                     </button>
                     <button
                       onClick={() => handleDelete(tag._id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-750 text-red-400 hover:text-red-300 hover:bg-red-950/20 border border-gray-700 hover:border-red-900/50 rounded-lg transition-colors text-sm font-medium"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-red-400 hover:text-red-300 hover:bg-red-950/20 border border-gray-700 hover:border-red-900/50 rounded-lg transition-colors text-sm font-medium"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete

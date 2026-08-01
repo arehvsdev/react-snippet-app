@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
@@ -8,6 +10,9 @@ interface AuthLayoutProps {
 }
 
 const AuthLayout = ({ children, type }: AuthLayoutProps) => {
+  useEffect(() => {
+    toast.dismiss();
+  }, [type]);
 
   const title = type === "login" ? "Welcome back" : "Create account";
   const subtitle =

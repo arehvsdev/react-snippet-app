@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, Bookmark, Share2, Copy, Check, MessageCircle, Send, Edit, Trash2, Pencil } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
 import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB } from '../services/snippetService';
 import toast from 'react-hot-toast';
@@ -10,11 +9,13 @@ interface Comment {
   author: {
     name: string;
     avatar: string;
+    username?: string;
   };
   content: string;
   createdAt: string;
   likes: number;
   isLiked?: boolean;
+  parentId?: string;
 }
 
 interface SnippetDetailProps {
@@ -41,7 +42,6 @@ interface SnippetDetailProps {
 }
 
 export function SnippetDetail({ snippet }: SnippetDetailProps) {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [likesCount, setLikesCount] = useState(snippet.likes);
@@ -300,19 +300,6 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
             <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
             <span>{isBookmarked ? 'Saved' : 'Save'} ({bookmarksCount})</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-gray-700 text-gray-300 hover:bg-gray-600 rounded-lg transition-colors">
-            <Share2 className="w-5 h-5" />
-            <span>Share</span>
-          </button>
-          {isOwner && (
-            <button
-              onClick={() => navigate(`/edit/${snippet.id}`)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors ml-auto font-medium"
-            >
-              <Edit className="w-4 h-4" />
-              <span>Edit</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -338,7 +325,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
               )}
             </button>
           </div>
-          <pre className="p-4 overflow-x-auto">
+          <pre className="p-4 overflow-x-auto custom-code-scrollbar">
             <code className="text-sm text-gray-100">{snippet.code}</code>
           </pre>
         </div>
@@ -418,6 +405,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                                 }}
                                 className="text-gray-400 hover:text-white transition-colors"
                                 title="Edit comment"
+                                aria-label="Edit comment"
                               >
                                 <Pencil className="w-3.5 h-3.5" />
                               </button>
@@ -427,6 +415,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                                 onClick={() => handleDeleteComment(comment.id)}
                                 className="text-gray-400 hover:text-red-400 transition-colors"
                                 title="Delete comment"
+                                aria-label="Delete comment"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
@@ -446,7 +435,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => setEditingCommentId(null)}
-                              className="px-2.5 py-1 text-xs text-gray-450 hover:text-white"
+                              className="px-2.5 py-1 text-xs text-gray-400 hover:text-white"
                             >
                               Cancel
                             </button>
@@ -521,7 +510,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
 
                 {/* Nested Replies List */}
                 {rootReplies.length > 0 && (
-                  <div className="ml-10 pl-3 border-l border-gray-750 space-y-3 pt-1">
+                  <div className="ml-10 pl-3 border-l border-gray-700 space-y-3 pt-1">
                     {rootReplies.map(reply => {
                       const replyCanEdit = user && user.username && reply.author.username === user.username;
                       const replyCanDelete = user && user.username && (reply.author.username === user.username || isOwner);
@@ -531,10 +520,10 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                           <img
                             src={reply.author.avatar}
                             alt={reply.author.name}
-                            className="w-8 h-8 rounded-full border border-gray-750"
+                            className="w-8 h-8 rounded-full border border-gray-700"
                           />
                           <div className="flex-1">
-                            <div className="bg-gray-800/40 border border-gray-750 rounded-lg p-3">
+                            <div className="bg-gray-800/40 border border-gray-700 rounded-lg p-3">
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-semibold text-white text-xs">{reply.author.name}</span>
@@ -552,6 +541,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                                         }}
                                         className="text-gray-400 hover:text-white transition-colors"
                                         title="Edit reply"
+                                        aria-label="Edit reply"
                                       >
                                         <Pencil className="w-3 h-3" />
                                       </button>
@@ -561,6 +551,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                                         onClick={() => handleDeleteComment(reply.id)}
                                         className="text-gray-400 hover:text-red-400 transition-colors"
                                         title="Delete reply"
+                                        aria-label="Delete reply"
                                       >
                                         <Trash2 className="w-3 h-3" />
                                       </button>

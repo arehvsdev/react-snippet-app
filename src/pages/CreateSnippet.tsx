@@ -2,30 +2,28 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { Layout } from './Layout';
-import { useAuth } from '../layouts/AuthContext';
-import { createSnippet, updateSnippet, getSnippetById, getCategories, getLanguages, getTags } from '../services/snippetService';
+import { createSnippet, updateSnippet, getSnippetById, getLanguages, getTags } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 export function CreateSnippet() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
   
   const isEditMode = !!id;
 
   // 2. React State (useState): Managing form inputs individually
   const [title, setTitle] = useState('');
   const [language, setLanguage] = useState('');
+  const [langSearchInput, setLangSearchInput] = useState('');
+  const [showLangSuggestions, setShowLangSuggestions] = useState(false);
   const [description, setDescription] = useState('');
-  const [tags, setTags] = useState(''); // Keep for compatibility if any, but we use selectedTags
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [suggestedTags, setSuggestedTags] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [code, setCode] = useState('');
-  const [categories, setCategories] = useState<any[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
   const [languagesList, setLanguagesList] = useState<any[]>([]);
+  const [isPublic, setIsPublic] = useState(true);
 
   // 3. State to track validation errors
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -33,9 +31,6 @@ export function CreateSnippet() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const catList = await getCategories();
-        setCategories(catList);
-
         const langList = await getLanguages({ active: true });
         setLanguagesList(langList);
         
@@ -43,13 +38,14 @@ export function CreateSnippet() {
           const s = await getSnippetById(id);
           setTitle(s.title || '');
           setLanguage(s.language || '');
+          setLangSearchInput(s.language || '');
           setDescription(s.description || '');
           setSelectedTags(s.tags || []);
           setCode(s.code || '');
-          const catId = s.category && typeof s.category === 'object' ? s.category._id : s.category;
-          setSelectedCategory(catId || '');
+          setIsPublic(s.visibility === 'public');
         } else if (langList.length > 0) {
           setLanguage(langList[0].name);
+          setLangSearchInput(langList[0].name);
         }
       } catch (err) {
         console.error("Failed to load snippet creation/edit data:", err);
@@ -78,7 +74,10 @@ export function CreateSnippet() {
   }, [tagInput, selectedTags]);
 
   useEffect(() => {
-    const handleClose = () => setShowSuggestions(false);
+    const handleClose = () => {
+      setShowSuggestions(false);
+      setShowLangSuggestions(false);
+    };
     document.addEventListener('click', handleClose);
     return () => document.removeEventListener('click', handleClose);
   }, []);
@@ -110,15 +109,13 @@ export function CreateSnippet() {
     setErrors({});
     
     try {
-      const activeUserId = Number(user?.id || user?.uid || 1);
-      
       const snippet = {
         title,
         language,
         description,
         code,
         tags: selectedTags,
-        category: selectedCategory || undefined
+        visibility: (isPublic ? 'public' : 'private') as 'public' | 'private'
       };
 
       if (isEditMode && id) {
@@ -178,47 +175,80 @@ export function CreateSnippet() {
             </div>
 
             {/* Language Field */}
-            <div>
+            <div className="relative" onClick={(e) => e.stopPropagation()}>
               <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-2">
                 Language <span className="text-red-400">*</span>
               </label>
-              <select
+              <input
                 id="language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                className={`w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white ${errors.language ? 'border-red-500' : 'border-gray-600'
+                type="text"
+                placeholder="Type to search or enter custom language..."
+                value={langSearchInput}
+                onChange={(e) => {
+                  setLangSearchInput(e.target.value);
+                  setLanguage(e.target.value);
+                  setShowLangSuggestions(true);
+                }}
+                onFocus={() => setShowLangSuggestions(true)}
+                className={`w-full px-4 py-2 bg-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 ${errors.language ? 'border-red-500' : 'border-gray-600'
                   }`}
-              >
-                <option value="" disabled>Select a programming language</option>
-                {languagesList.map((lang) => (
-                  <option key={lang._id} value={lang.name}>
-                    {lang.name}
-                  </option>
-                ))}
-              </select>
+              />
+              {showLangSuggestions && (
+                <div className="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50">
+                  {languagesList
+                    .filter((lang) =>
+                      lang.name.toLowerCase().includes(langSearchInput.toLowerCase())
+                    )
+                    .map((lang) => (
+                      <button
+                        key={lang._id}
+                        type="button"
+                        onClick={() => {
+                          setLanguage(lang.name);
+                          setLangSearchInput(lang.name);
+                          setShowLangSuggestions(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-gray-700 transition-colors text-white border-b border-gray-800 last:border-0"
+                      >
+                        {lang.name}
+                      </button>
+                    ))}
+                  {languagesList.filter((lang) =>
+                    lang.name.toLowerCase().includes(langSearchInput.toLowerCase())
+                  ).length === 0 && (
+                    <div className="px-4 py-2.5 text-sm text-gray-400">
+                      No matching language found. Enter to use custom: "{langSearchInput}"
+                    </div>
+                  )}
+                </div>
+              )}
               {errors.language && (
                 <p className="mt-1 text-sm text-red-400">{errors.language}</p>
               )}
             </div>
 
-            {/* Category Field */}
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-300 mb-2">
-                Category
+            {/* Visibility Field */}
+            <div className="bg-gray-900/40 p-4 border border-gray-700 rounded-lg flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-medium text-white mb-0.5">Visibility</label>
+                <p className="text-xs text-gray-400">
+                  {isPublic 
+                    ? 'Anyone can view and bookmark this snippet.' 
+                    : 'Only you can view and access this snippet.'}
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input 
+                  type="checkbox" 
+                  checked={isPublic}
+                  onChange={(e) => setIsPublic(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ms-3 text-sm font-semibold text-gray-300">
+                  {isPublic ? 'Public' : 'Private'}
+                </span>
               </label>
-              <select
-                id="category"
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white"
-              >
-                <option value="">Select a category (Optional)</option>
-                {categories.map((cat) => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Description Field */}
@@ -255,6 +285,7 @@ export function CreateSnippet() {
                         type="button"
                         onClick={() => setSelectedTags(selectedTags.filter(t => t !== tag))}
                         className="w-4 h-4 rounded-full flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-900 transition-colors text-xs font-bold"
+                        aria-label={`Remove tag ${tag}`}
                       >
                         &times;
                       </button>
@@ -294,7 +325,7 @@ export function CreateSnippet() {
                 
                 {/* Suggestions Dropdown */}
                 {showSuggestions && tagInput.trim() && (
-                  <div className="absolute left-0 right-0 mt-2 bg-gray-850 border border-gray-750 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50">
+                  <div className="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50">
                     {suggestedTags.length > 0 ? (
                       suggestedTags.map((tag) => (
                         <button
@@ -306,7 +337,7 @@ export function CreateSnippet() {
                             setSuggestedTags([]);
                             setShowSuggestions(false);
                           }}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-750 transition-colors flex items-center justify-between border-b border-gray-800 last:border-0"
+                          className="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors flex items-center justify-between border-b border-gray-800 last:border-0"
                         >
                           <span className="font-semibold text-white flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: tag.color }}></span>
@@ -337,7 +368,7 @@ export function CreateSnippet() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 rows={12}
-                className={`w-full px-4 py-2 bg-gray-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm text-gray-100 placeholder-gray-500 ${errors.code ? 'border-red-500' : 'border-gray-600'
+                className={`w-full px-4 py-2 bg-gray-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm text-gray-100 placeholder-gray-500 custom-code-scrollbar ${errors.code ? 'border-red-500' : 'border-gray-600'
                   }`}
                 placeholder="Paste your code here..."
               />

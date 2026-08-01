@@ -1,55 +1,72 @@
+import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { CreateSnippet } from "../pages/CreateSnippet";
 import ProtectedRoute from "./ProtectedRoute";
 import { AdminRoute } from "./AdminRoute";
-import { Landing } from "../pages/Landing";
-import { Subscription } from "../pages/Subscription";
-import { Bookmarks } from "../pages/Bookmarks";
-import { SnippetFeed } from "../pages/SnippetFeed";
-import { Profile } from "../pages/Profile";
-import { AdminDashboard } from "../components/admin/AdminDashboard";
-import { ManageLanguages } from "../components/admin/ManageLanguages";
-import { ManageTags } from "../components/admin/ManageTags";
-import { ManageCategories } from "../components/admin/ManageCategories";
+import { NormalUserRoute } from "./NormalUserRoute";
+import { Loader2 } from "lucide-react";
 
-// A simple 404 Not Found page. For a real app, you might want a more styled page
-// that uses the main Layout for authenticated users to feel more integrated.
+// Lazy-load named exports to optimize JS bundle packaging
+const Landing = lazy(() => import("../pages/Landing").then(m => ({ default: m.Landing })));
+const SnippetFeed = lazy(() => import("../pages/SnippetFeed").then(m => ({ default: m.SnippetFeed })));
+const Profile = lazy(() => import("../pages/Profile").then(m => ({ default: m.Profile })));
+const CreateSnippet = lazy(() => import("../pages/CreateSnippet").then(m => ({ default: m.CreateSnippet })));
+const Subscription = lazy(() => import("../pages/Subscription").then(m => ({ default: m.Subscription })));
+const Bookmarks = lazy(() => import("../pages/Bookmarks").then(m => ({ default: m.Bookmarks })));
+const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
+const ManageLanguages = lazy(() => import("../components/admin/ManageLanguages").then(m => ({ default: m.ManageLanguages })));
+const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m => ({ default: m.ManageTags })));
+const ManageCategories = lazy(() => import("../components/admin/ManageCategories").then(m => ({ default: m.ManageCategories })));
+const ManageUsers = lazy(() => import("../components/admin/ManageUsers").then(m => ({ default: m.ManageUsers })));
+
+// A simple 404 Not Found page
 const NotFound = () => (
   <div className="flex h-screen items-center justify-center bg-gray-900">
-    <h1 className="text-3xl text-white">404 - Page Not Found</h1>
+    <h1 className="text-3xl text-white font-bold">404 - Page Not Found</h1>
   </div>
 );
 
 const AppRoutes = () => {
   return (
-    <Routes>
-      {/* Public Routes */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Navigate to="/" replace />} />
-      <Route path="/register" element={<Navigate to="/" replace />} />
+    <Suspense fallback={
+      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+          <p className="text-gray-400 text-sm font-medium">Loading layout content...</p>
+        </div>
+      </div>
+    }>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Navigate to="/" replace />} />
+        <Route path="/register" element={<Navigate to="/" replace />} />
 
-      {/* Protected Routes */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/snippet-feed" element={<SnippetFeed />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/create" element={<CreateSnippet />} />
-        <Route path="/edit/:id" element={<CreateSnippet />} />
-        <Route path="/subscription" element={<Subscription />} />
-        <Route path="/bookmarks" element={<Bookmarks />} />
+        {/* Protected Routes */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/snippet-feed" element={<SnippetFeed />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/create" element={<CreateSnippet />} />
+          <Route path="/edit/:id" element={<CreateSnippet />} />
+          <Route element={<NormalUserRoute />}>
+            <Route path="/subscription" element={<Subscription />} />
+          </Route>
+          <Route path="/bookmarks" element={<Bookmarks />} />
 
-        {/* Admin-only routes are nested here. ProtectedRoute ensures authentication, AdminRoute ensures authorization. */}
-        <Route element={<AdminRoute />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/languages" element={<ManageLanguages />} />
-          <Route path="/admin/tags" element={<ManageTags />} />
-          <Route path="/admin/categories" element={<ManageCategories />} />
+          {/* Admin-only routes */}
+          <Route element={<AdminRoute />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/languages" element={<ManageLanguages />} />
+            <Route path="/admin/tags" element={<ManageTags />} />
+            <Route path="/admin/categories" element={<ManageCategories />} />
+            <Route path="/admin/users" element={<ManageUsers />} />
+          </Route>
+
+          {/* Redirects for old/alternative paths for consistency */}
+          <Route path="/create-snippet" element={<Navigate to="/create" replace />} />
         </Route>
-
-        {/* Redirects for old/alternative paths for consistency */}
-        <Route path="/create-snippet" element={<Navigate to="/create" replace />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 

@@ -33,10 +33,10 @@ export function Bookmarks() {
 
   return (
     <Layout>
-      <div className="flex min-h-[calc(100vh-4rem)]">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)]">
         <Sidebar />
 
-        <div className="flex-1 bg-gray-900 p-8">
+        <div className="flex-1 bg-gray-900 p-8 min-w-0">
           <div className="max-w-5xl mx-auto">
             {/* Header */}
             <div className="mb-8">

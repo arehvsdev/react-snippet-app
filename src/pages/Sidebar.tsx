@@ -51,7 +51,7 @@ export function Sidebar({ activeCategory, onCategorySelect }: SidebarProps) {
   }, [user]);
 
   return (
-    <div className="w-64 bg-gray-800 border-r border-gray-700 h-[calc(100vh-4rem)] overflow-y-auto sticky top-16">
+    <div className="hidden lg:block w-64 bg-gray-800 border-r border-gray-700 h-[calc(100vh-4rem)] overflow-y-auto sticky top-16 flex-shrink-0">
       <div className="p-4">
         {/* Navigation */}
         <div className="mb-6">
@@ -74,13 +74,15 @@ export function Sidebar({ activeCategory, onCategorySelect }: SidebarProps) {
               </span>
             )}
           </button>
-          <button
-            onClick={() => navigate('/subscription')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
-          >
-            <CreditCard className="w-5 h-5" />
-            <span className="font-medium">Subscription</span>
-          </button>
+          {user?.role?.toLowerCase() !== 'admin' && (
+            <button
+              onClick={() => navigate('/subscription')}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            >
+              <CreditCard className="w-5 h-5" />
+              <span className="font-medium">Subscription</span>
+            </button>
+          )}
         </div>
 
         {/* Categories */}

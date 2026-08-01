@@ -56,7 +56,10 @@ export function Layout({ children }: LayoutProps) {
             {/* Right Side Icons */}
             <div className="flex items-center gap-4">
               {/* Notification Icon */}
-              <button className="relative p-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+              <button 
+                className="relative p-2 rounded-lg text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+                aria-label="Notifications"
+              >
                 <Bell className="w-6 h-6" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
               </button>

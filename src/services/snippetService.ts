@@ -15,6 +15,7 @@ export interface SnippetData {
   code: string;
   tags: string[];
   category?: string;
+  visibility?: 'public' | 'private';
 }
 
 const normalizeSnippet = (s: any) => {
@@ -130,7 +131,8 @@ export const createSnippet = async (data: SnippetData): Promise<any> => {
       description: data.description,
       code: data.code,
       tags: data.tags,
-      category: data.category || undefined
+      category: data.category || undefined,
+      visibility: data.visibility
     })
   });
 

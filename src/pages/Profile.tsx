@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft } from 'lucide-react';
-import { CodeSnippet } from './CodeSnippet';
+import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus } from 'lucide-react';
+import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserAvatar } from '../services/user/user';
-import { getSnippets, getUserBookmarks } from '../services/snippetService';
+import { getSnippets, getUserBookmarks, updateSnippet } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 export function Profile() {
@@ -145,8 +145,10 @@ export function Profile() {
     }
   };
 
+  const userId = user?.id || user?.uid;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       navigate('/');
       return;
     }
@@ -155,7 +157,7 @@ export function Profile() {
 
     const loadUserSnippetsAndBookmarks = async () => {
       try {
-        const snippetsData = await getSnippets({ userId: user.id || user.uid });
+        const snippetsData = await getSnippets({ userId });
         setUserSnippets(snippetsData);
         
         const bookmarksData = await getUserBookmarks();
@@ -165,7 +167,8 @@ export function Profile() {
       }
     };
     loadUserSnippetsAndBookmarks();
-  }, [user, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, navigate]);
 
   if (!user || !currentUserData) {
     return null;
@@ -176,6 +179,22 @@ export function Profile() {
 
   const handleLogout = () => {
     logout();
+  };
+
+  const handleVisibilityToggle = async (snippetId: string, newVisibility: 'public' | 'private') => {
+    try {
+      await updateSnippet(snippetId, { visibility: newVisibility });
+      setUserSnippets(prev =>
+        prev.map(s => (s.id === snippetId ? { ...s, visibility: newVisibility } : s))
+      );
+      toast.success(`Snippet visibility updated to ${newVisibility}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update snippet visibility');
+    }
+  };
+
+  const handleEdit = (id: string) => {
+    navigate(`/edit/${id}`);
   };
 
   return (
@@ -203,6 +222,7 @@ export function Profile() {
                   <button 
                     onClick={handleAvatarClick}
                     className="absolute bottom-0 right-0 bg-gray-700 rounded-full p-2 shadow-lg border border-gray-600 hover:bg-gray-600 transition-colors"
+                    aria-label="Upload avatar"
                   >
                     <UserIcon className="w-4 h-4 text-gray-300" />
                   </button>
@@ -259,89 +279,109 @@ export function Profile() {
           {/* Content Area */}
           <div className="lg:col-span-2">
             {/* Tabs */}
-            <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-6">
-              <div className="flex border-b border-gray-700">
-                <button
-                  onClick={() => setActiveTab('my-snippets')}
-                  className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'my-snippets'
-                      ? 'text-blue-400 border-b-2 border-blue-500'
-                      : 'text-gray-400 hover:text-white'
-                    }`}
-                >
-                  My Snippets ({userSnippets.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('bookmarks')}
-                  className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'bookmarks'
-                      ? 'text-blue-400 border-b-2 border-blue-500'
-                      : 'text-gray-400 hover:text-white'
-                    }`}
-                >
-                  Bookmarks ({bookmarkedSnippets.length})
-                </button>
+            {bookmarkedSnippets.length > 0 && (
+              <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 mb-6">
+                <div className="flex border-b border-gray-700">
+                  <button
+                    onClick={() => setActiveTab('my-snippets')}
+                    className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'my-snippets'
+                        ? 'text-blue-400 border-b-2 border-blue-500'
+                        : 'text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    My Snippets ({userSnippets.length})
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('bookmarks')}
+                    className={`flex-1 px-6 py-4 font-medium transition-colors ${activeTab === 'bookmarks'
+                        ? 'text-blue-400 border-b-2 border-blue-500'
+                        : 'text-gray-400 hover:text-white'
+                      }`}
+                  >
+                    Bookmarks ({bookmarkedSnippets.length})
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* My Snippets Tab */}
             {activeTab === 'my-snippets' && (
               <div className="space-y-8">
                 {/* Public Snippets */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Globe className="w-5 h-5 text-green-400" />
-                    <h3 className="text-xl font-bold text-white">
-                      Public Snippets ({publicSnippets.length})
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    {publicSnippets.map((snippet) => (
-                      <div key={snippet.id} className="relative">
-                        <div className="absolute top-4 right-4 z-10">
-                          <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                            <Globe className="w-3 h-3" />
-                            Public
-                          </span>
-                        </div>
+                {publicSnippets.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Globe className="w-5 h-5 text-green-400" />
+                      <h3 className="text-xl font-bold text-white">
+                        Public Snippets ({publicSnippets.length})
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      {publicSnippets.map((snippet) => (
                         <CodeSnippet
+                          key={snippet.id}
+                          id={snippet.id}
                           title={snippet.title}
                           language={snippet.language}
                           code={snippet.code}
                           description={snippet.description}
                           tags={snippet.tags}
+                          visibility={snippet.visibility}
+                          onVisibilityToggle={handleVisibilityToggle}
+                          onEdit={handleEdit}
                         />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Private Snippets */}
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Lock className="w-5 h-5 text-gray-400" />
-                    <h3 className="text-xl font-bold text-white">
-                      Private Snippets ({privateSnippets.length})
-                    </h3>
-                  </div>
-                  <div className="space-y-4">
-                    {privateSnippets.map((snippet) => (
-                      <div key={snippet.id} className="relative">
-                        <div className="absolute top-4 right-4 z-10">
-                          <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                            <Lock className="w-3 h-3" />
-                            Private
-                          </span>
-                        </div>
+                {privateSnippets.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Lock className="w-5 h-5 text-gray-400" />
+                      <h3 className="text-xl font-bold text-white">
+                        Private Snippets ({privateSnippets.length})
+                      </h3>
+                    </div>
+                    <div className="space-y-4">
+                      {privateSnippets.map((snippet) => (
                         <CodeSnippet
+                          key={snippet.id}
+                          id={snippet.id}
                           title={snippet.title}
                           language={snippet.language}
                           code={snippet.code}
                           description={snippet.description}
                           tags={snippet.tags}
+                          visibility={snippet.visibility}
+                          onVisibilityToggle={handleVisibilityToggle}
+                          onEdit={handleEdit}
                         />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Empty State */}
+                {userSnippets.length === 0 && (
+                  <div className="text-center py-16 bg-gray-800/40 rounded-xl border border-gray-700/60 p-8 flex flex-col items-center justify-center backdrop-blur-sm max-w-md mx-auto animate-fade-in">
+                    <div className="bg-blue-600/10 p-4 rounded-full mb-4 border border-blue-500/20">
+                      <Globe className="w-8 h-8 text-blue-400" />
+                    </div>
+                    <h4 className="text-xl font-bold text-white mb-2">No snippets yet</h4>
+                    <p className="text-gray-400 text-sm mb-6 text-center leading-relaxed">
+                      Get started by creating your first snippet. Share it with the world or keep it private.
+                    </p>
+                    <button
+                      onClick={() => navigate('/create')}
+                      className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-6 py-2.5 rounded-lg transition-colors font-medium shadow-lg hover:shadow-blue-500/15"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create First Snippet
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -355,16 +395,21 @@ export function Profile() {
                   </h3>
                 </div>
                 <div className="space-y-4">
-                  {bookmarkedSnippets.map((snippet) => (
-                    <CodeSnippet
-                      key={snippet.id}
-                      title={snippet.title}
-                      language={snippet.language}
-                      code={snippet.code}
-                      description={snippet.description}
-                      tags={snippet.tags}
-                    />
-                  ))}
+                  {bookmarkedSnippets.map((snippet) => {
+                    const isOwner = user && snippet.author?.username === user.username;
+                    return (
+                      <CodeSnippet
+                        key={snippet.id}
+                        id={snippet.id}
+                        title={snippet.title}
+                        language={snippet.language}
+                        code={snippet.code}
+                        description={snippet.description}
+                        tags={snippet.tags}
+                        onEdit={isOwner ? handleEdit : undefined}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -381,6 +426,7 @@ export function Profile() {
               <button 
                 onClick={() => setIsEditModalOpen(false)}
                 className="text-gray-400 hover:text-white transition-colors text-lg"
+                aria-label="Close modal"
               >
                 ✕
               </button>

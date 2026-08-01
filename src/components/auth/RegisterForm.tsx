@@ -2,7 +2,7 @@ import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { Input, Select } from "../ui/UI";
-import { registerUser } from "../../services/authService";
+import { registerUser, checkUsernameAvailability } from "../../services/authService";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
@@ -10,9 +10,10 @@ const RegisterForm = () => {
   // State to hold all the form data for registration.
   const [formData, setFormData] = useState({
     fullName: "",
+    username: "",
     email: "",
     phoneNumber: "",
-    role: "",
+    role: "student",
     password: "",
     confirmPassword: "",
   });
@@ -35,6 +36,12 @@ const RegisterForm = () => {
       case "fullName":
         if (!value.trim()) return "Full name is required.";
         return "";
+      case "username":
+        if (!value.trim()) return "Username is required.";
+        if (value.trim().length < 3) return "Username must be at least 3 characters.";
+        if (!/^[a-zA-Z0-9_]+$/.test(value))
+          return "Username can only contain letters, numbers, and underscores.";
+        return "";
       case "email":
         if (!value.trim()) return "Email is required.";
         // simple email check
@@ -51,9 +58,9 @@ const RegisterForm = () => {
         return "";
       case "password":
         if (!value) return "Password is required.";
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])[A-Za-z\d@$!%*?&#\.]{8,}$/;
         if (!passwordRegex.test(value)) {
-          return "Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).";
+          return "Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#.).";
         }
         return "";
       case "confirmPassword":
@@ -65,12 +72,21 @@ const RegisterForm = () => {
     }
   };
 
-  const handleFieldChange = (
+  const handleFieldChange = async (
     e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    
+    const fieldError = validateField(name, value);
+    setErrors((prev) => ({ ...prev, [name]: fieldError }));
+
+    if (name === "username" && !fieldError && value.trim().length >= 3) {
+      const isAvailable = await checkUsernameAvailability(value);
+      if (!isAvailable) {
+        setErrors((prev) => ({ ...prev, username: "Username is already taken." }));
+      }
+    }
   };
 
   // This function runs when the registration form is submitted.
@@ -78,7 +94,7 @@ const RegisterForm = () => {
     e.preventDefault();
 
     // Destructure form data for easier access.
-    const { fullName, email, password, role, phoneNumber } = formData;
+    const { fullName, username, email, password, role, phoneNumber } = formData;
 
     // Run validations for all fields
     const newErrors: Record<string, string> = {};
@@ -95,7 +111,14 @@ const RegisterForm = () => {
     }
 
     try {
-      await registerUser({ fullName, email, password, phoneNumber, role });
+      const isAvailable = await checkUsernameAvailability(username);
+      if (!isAvailable) {
+        setErrors(prev => ({ ...prev, username: "Username is already taken." }));
+        toast.error("Username is already taken.");
+        return;
+      }
+
+      await registerUser({ fullName, username, email, password, phoneNumber, role });
       toast.success("Registration successful! Please log in.");
       // Redirect to the login page after successful registration.
       setTimeout(() => {
@@ -109,7 +132,7 @@ const RegisterForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} autoComplete="off">
       <Input
         id="fullName"
         label="Full Name"
@@ -120,6 +143,19 @@ const RegisterForm = () => {
         placeholder="John Doe"
         required
         error={errors.fullName}
+        autoComplete="off"
+      />
+      <Input
+        id="username"
+        label="Username"
+        type="text"
+        name="username"
+        value={formData.username}
+        onChange={handleFieldChange}
+        placeholder="johndoe"
+        required
+        error={errors.username}
+        autoComplete="off"
       />
       <Input
         id="email"
@@ -131,6 +167,7 @@ const RegisterForm = () => {
         placeholder="you@example.com"
         required
         error={errors.email}
+        autoComplete="off"
       />
       <Input
         id="phoneNumber"
@@ -141,6 +178,7 @@ const RegisterForm = () => {
         onChange={handleFieldChange}
         placeholder="(123) 456-7890"
         error={errors.phoneNumber}
+        autoComplete="off"
       />
       <Select
         id="role"
@@ -163,6 +201,7 @@ const RegisterForm = () => {
         placeholder="••••••••"
         required
         error={errors.password}
+        autoComplete="new-password"
       />
       <Input
         id="confirmPassword"
@@ -174,6 +213,7 @@ const RegisterForm = () => {
         placeholder="••••••••"
         required
         error={errors.confirmPassword}
+        autoComplete="new-password"
       />
       <button
         type="submit"

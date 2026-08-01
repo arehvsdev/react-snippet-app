@@ -118,12 +118,12 @@ export function SnippetFeed() {
 
   return (
     <Layout>
-      <div className="flex min-h-[calc(100vh-4rem)] bg-gray-900">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)] bg-gray-900">
         {/* Sidebar */}
         <Sidebar activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
 
         {/* Snippet List Container */}
-        <div className="w-96 bg-gray-800 border-r border-gray-700 flex flex-col h-[calc(100vh-4rem)]">
+        <div className="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex flex-col h-auto lg:h-[calc(100vh-4rem)] flex-shrink-0">
           {/* Search Header */}
           <div className="p-4 border-b border-gray-700 bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -145,6 +145,7 @@ export function SnippetFeed() {
                     : 'bg-gray-900 border-gray-700 text-gray-400 hover:text-white'
                 }`}
                 title="Advanced Filters"
+                aria-label="Advanced filters"
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
@@ -152,10 +153,10 @@ export function SnippetFeed() {
 
             {/* Advanced Filters Panel */}
             {showAdvanced && (
-              <div className="space-y-2.5 p-3 bg-gray-900/50 border border-gray-750 rounded-lg animate-in fade-in slide-in-from-top-2 duration-155">
+              <div className="space-y-2.5 p-3 bg-gray-900/50 border border-gray-700 rounded-lg animate-in fade-in slide-in-from-top-2 duration-155">
                 {/* Language Dropdown */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-405 mb-1">Language</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Language</label>
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
@@ -171,7 +172,7 @@ export function SnippetFeed() {
                 {/* Category Dropdown */}
                 {!activeCategory && (
                   <div>
-                    <label className="block text-xs font-semibold text-gray-405 mb-1">Category</label>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1">Category</label>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
@@ -187,7 +188,7 @@ export function SnippetFeed() {
 
                 {/* Tag Search */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-405 mb-1">Tag</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Tag</label>
                   <input
                     type="text"
                     placeholder="e.g. react"
@@ -199,7 +200,7 @@ export function SnippetFeed() {
 
                 {/* Author Search */}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-405 mb-1">Author</label>
+                  <label className="block text-xs font-semibold text-gray-400 mb-1">Author</label>
                   <input
                     type="text"
                     placeholder="e.g. admin"
@@ -212,7 +213,7 @@ export function SnippetFeed() {
                 {/* Sort Controls */}
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="block text-xs font-semibold text-gray-405 mb-1">Sort By</label>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1">Sort By</label>
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
@@ -225,11 +226,11 @@ export function SnippetFeed() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-405 mb-1">Order</label>
+                    <label className="block text-xs font-semibold text-gray-400 mb-1">Order</label>
                     <button
                       type="button"
                       onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white hover:bg-gray-850 flex items-center gap-1.5"
+                      className="px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white hover:bg-gray-800 flex items-center gap-1.5"
                     >
                       <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
                       {sortOrder.toUpperCase()}
@@ -254,7 +255,7 @@ export function SnippetFeed() {
                   className={`w-full text-left p-4 rounded-lg transition-all border ${
                     selectedSnippet?.id === snippet.id
                       ? 'bg-gray-700/60 border-blue-500 shadow-md shadow-blue-500/5'
-                      : 'bg-gray-800/50 border-gray-750 hover:bg-gray-700/40 hover:border-gray-600'
+                      : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700/40 hover:border-gray-600'
                   }`}
                 >
                   {/* Author Info */}
@@ -307,8 +308,8 @@ export function SnippetFeed() {
             ) : (
               <div className="text-center py-20">
                 <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-450 text-sm font-semibold">No snippets found</p>
-                <p className="text-gray-505 text-xs mt-1">Try adjusting your filters.</p>
+                <p className="text-gray-300 text-sm font-semibold">No snippets found</p>
+                <p className="text-gray-400 text-xs mt-1">Try adjusting your filters.</p>
               </div>
             )}
           </div>
@@ -320,6 +321,7 @@ export function SnippetFeed() {
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
                 className="p-1.5 bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white disabled:opacity-40 transition-opacity"
+                aria-label="Previous page"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -330,6 +332,7 @@ export function SnippetFeed() {
                 disabled={page >= pagination.totalPages}
                 onClick={() => setPage(page + 1)}
                 className="p-1.5 bg-gray-800 border border-gray-700 rounded text-gray-400 hover:text-white disabled:opacity-40 transition-opacity"
+                aria-label="Next page"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -338,7 +341,7 @@ export function SnippetFeed() {
         </div>
 
         {/* Detail View */}
-        <div className="flex-1 bg-gray-900 overflow-y-auto">
+        <div className="flex-1 bg-gray-900 overflow-y-auto min-w-0">
           {selectedSnippet ? (
             <SnippetDetail snippet={selectedSnippet} />
           ) : (

@@ -2,7 +2,7 @@ import { Container, Typography, TextField, InputAdornment, Box } from '@mui/mate
 import { Search, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { CodeSnippet } from './CodeSnippet';
+import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { getDB } from '../services/dbService';
 

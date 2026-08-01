@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { FC, InputHTMLAttributes, SelectHTMLAttributes } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { RADII } from '../../constants/styles';
 
 
@@ -21,8 +22,12 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   required?: boolean;
 }
 
-export const Input: FC<InputProps> = ({ label, error, required, className, ...props }) => {
-  const finalClasses = `${baseElementClasses} ${error ? errorElementClasses : normalElementClasses} ${className || ''}`;
+export const Input: FC<InputProps> = ({ label, error, required, className, type, ...props }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordType = type === 'password';
+  const inputType = isPasswordType ? (showPassword ? 'text' : 'password') : type;
+
+  const finalClasses = `${baseElementClasses} ${error ? errorElementClasses : normalElementClasses} ${isPasswordType ? 'pr-10' : ''} ${className || ''}`;
 
   return (
     <div className={baseWrapperClasses}>
@@ -32,7 +37,19 @@ export const Input: FC<InputProps> = ({ label, error, required, className, ...pr
           {required && <span className="text-red-500 ml-0.5">*</span>}
         </label>
       )}
-      <input {...props} className={finalClasses} />
+      <div className="relative">
+        <input {...props} type={inputType} className={finalClasses} />
+        {isPasswordType && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
       {error && <p className={errorTextClasses}>{error}</p>}
     </div>
   );
