@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil } from 'lucide-react';
+import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil, Globe, Lock } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
 import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB } from '../services/snippetService';
 import toast from 'react-hot-toast';
@@ -26,6 +26,7 @@ interface SnippetDetailProps {
     language: string;
     code: string;
     tags: string[];
+    visibility?: 'public' | 'private';
     author: {
       name: string;
       avatar: string;
@@ -246,7 +247,19 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
       <div className="mb-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">{snippet.title}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-white">{snippet.title}</h1>
+              {snippet.visibility && (
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                  snippet.visibility === 'public'
+                    ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                    : 'bg-gray-700/50 text-gray-300 border-gray-600'
+                }`}>
+                  {snippet.visibility === 'public' ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                  <span className="capitalize">{snippet.visibility}</span>
+                </span>
+              )}
+            </div>
             <p className="text-gray-400">{snippet.description}</p>
           </div>
         </div>

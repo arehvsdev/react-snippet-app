@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus } from 'lucide-react';
+import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus, Key } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
-import { getUserProfile, updateUserProfile, updateUserAvatar } from '../services/user/user';
+import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/user/user';
 import { getSnippets, getUserBookmarks, updateSnippet } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
@@ -25,6 +25,39 @@ export function Profile() {
   const [editUsername, setEditUsername] = useState('');
   const [editBio, setEditBio] = useState('');
   const [editPhoneNumber, setEditPhoneNumber] = useState('');
+
+  // Change Password States
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+
+  const handleSavePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword) {
+      toast.error('Current password is required');
+      return;
+    }
+    if (!newPassword || newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters long');
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    try {
+      await changeUserPassword({ currentPassword, newPassword });
+      toast.success('Password changed successfully!');
+      setIsPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to change password');
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -265,6 +298,13 @@ export function Profile() {
                     Edit Profile
                   </button>
                   <button
+                    onClick={() => setIsPasswordModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg transition-colors font-medium border border-gray-600"
+                  >
+                    <Key className="w-4 h-4" />
+                    Change Password
+                  </button>
+                  <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
                   >
@@ -500,6 +540,87 @@ export function Profile() {
                   className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Change Password Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                <Key className="w-5 h-5 text-blue-400" />
+                Change Password
+              </h3>
+              <button 
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors text-lg"
+                aria-label="Close password modal"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleSavePassword} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Current Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  New Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="••••••••"
+                />
+                <p className="text-xs text-gray-400 mt-1">At least 8 chars with uppercase, lowercase, number & special char.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">
+                  Confirm New Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
+                >
+                  Update Password
                 </button>
               </div>
             </form>

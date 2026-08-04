@@ -1,12 +1,4 @@
-const API_BASE_URL = "http://localhost:5000/api";
-
-const getHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { "Authorization": `Bearer ${token}` } : {})
-  };
-};
+import { apiClient } from "./apiClient";
 
 export interface SnippetData {
   title: string;
@@ -79,16 +71,8 @@ export const getSnippets = async (filters?: {
     });
   }
 
-  const url = `${API_BASE_URL}/snippets${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch snippets.");
-  }
+  const endpoint = `/snippets${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const resData = await apiClient.get(endpoint);
 
   const list = resData.snippets || resData.data || [];
   const normalized = list.map(normalizeSnippet);
@@ -104,16 +88,7 @@ export const getSnippets = async (filters?: {
  * Fetches a single snippet by ID.
  */
 export const getSnippetById = async (id: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch snippet details.");
-  }
-
+  const resData = await apiClient.get(`/snippets/${id}`);
   const s = resData.snippet || resData.data;
   return normalizeSnippet(s);
 };
@@ -122,27 +97,15 @@ export const getSnippetById = async (id: string): Promise<any> => {
  * Saves a new snippet to the MongoDB database.
  */
 export const createSnippet = async (data: SnippetData): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify({
-      title: data.title,
-      language: data.language,
-      description: data.description,
-      code: data.code,
-      tags: data.tags,
-      category: data.category || undefined,
-      visibility: data.visibility
-    })
+  const resData = await apiClient.post('/snippets', {
+    title: data.title,
+    language: data.language,
+    description: data.description,
+    code: data.code,
+    tags: data.tags,
+    category: data.category || undefined,
+    visibility: data.visibility
   });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to create snippet.");
-    throw new Error(errorMsg);
-  }
 
   const s = resData.snippet || resData.data;
   return normalizeSnippet(s);
@@ -152,20 +115,7 @@ export const createSnippet = async (data: SnippetData): Promise<any> => {
  * Updates an existing snippet.
  */
 export const updateSnippet = async (id: string, data: Partial<SnippetData>): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to update snippet.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.put(`/snippets/${id}`, data);
   const s = resData.snippet || resData.data;
   return normalizeSnippet(s);
 };
@@ -174,33 +124,14 @@ export const updateSnippet = async (id: string, data: Partial<SnippetData>): Pro
  * Deletes a snippet.
  */
 export const deleteSnippet = async (id: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${id}`, {
-    method: "DELETE",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to delete snippet.");
-  }
-
-  return resData;
+  return apiClient.delete(`/snippets/${id}`);
 };
 
 /**
  * Toggles a snippet bookmark state in the backend database.
  */
 export const toggleBookmarkInDB = async (snippetId: string): Promise<{ bookmarked: boolean; bookmarksCount: number }> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/bookmarks`, {
-    method: "POST",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to toggle bookmark.");
-  }
-
+  const resData = await apiClient.post(`/snippets/${snippetId}/bookmarks`);
   return {
     bookmarked: resData.bookmarked,
     bookmarksCount: resData.bookmarksCount || 0
@@ -215,16 +146,8 @@ export const getUserBookmarks = async (filters?: { page?: number; limit?: number
   if (filters?.page) queryParams.append("page", String(filters.page));
   if (filters?.limit) queryParams.append("limit", String(filters.limit));
 
-  const url = `${API_BASE_URL}/snippets/my/bookmarks${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch user bookmarks.");
-  }
+  const endpoint = `/snippets/my/bookmarks${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const resData = await apiClient.get(endpoint);
 
   const list = resData.bookmarks || resData.data || [];
   const normalized = list.map(normalizeSnippet);
@@ -242,16 +165,8 @@ export const getComments = async (snippetId: string, filters?: { page?: number; 
   if (filters?.page) queryParams.append("page", String(filters.page));
   if (filters?.limit) queryParams.append("limit", String(filters.limit));
 
-  const url = `${API_BASE_URL}/snippets/${snippetId}/comments${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch comments.");
-  }
+  const endpoint = `/snippets/${snippetId}/comments${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const resData = await apiClient.get(endpoint);
 
   const list = resData.comments || resData.data || [];
   const normalized = list.map(normalizeComment);
@@ -265,20 +180,7 @@ export const getComments = async (snippetId: string, filters?: { page?: number; 
  * Appends a comment or reply to a snippet.
  */
 export const saveCommentToDB = async (snippetId: string, content: string, parentId?: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/comments`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify({ content, parentId })
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to save comment.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.post(`/snippets/${snippetId}/comments`, { content, parentId });
   const comment = resData.comment || resData.data;
   return normalizeComment(comment);
 };
@@ -287,20 +189,7 @@ export const saveCommentToDB = async (snippetId: string, content: string, parent
  * Updates an existing comment.
  */
 export const updateCommentInDB = async (commentId: string, content: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/comments/${commentId}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify({ content })
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to update comment.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.put(`/snippets/comments/${commentId}`, { content });
   const comment = resData.comment || resData.data;
   return normalizeComment(comment);
 };
@@ -309,33 +198,14 @@ export const updateCommentInDB = async (commentId: string, content: string): Pro
  * Deletes a comment.
  */
 export const deleteCommentInDB = async (commentId: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/comments/${commentId}`, {
-    method: "DELETE",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to delete comment.");
-  }
-
-  return resData;
+  return apiClient.delete(`/snippets/comments/${commentId}`);
 };
 
 /**
  * Fetches all categories.
  */
 export const getCategories = async (): Promise<any[]> => {
-  const response = await fetch(`${API_BASE_URL}/categories`, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch categories.");
-  }
-
+  const resData = await apiClient.get('/categories');
   return resData.categories || resData.data || [];
 };
 
@@ -343,20 +213,7 @@ export const getCategories = async (): Promise<any[]> => {
  * Creates a new category. (Admin only)
  */
 export const createCategory = async (data: { name: string; description?: string }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/categories`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to create category.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.post('/categories', data);
   return resData.category || resData.data;
 };
 
@@ -364,20 +221,7 @@ export const createCategory = async (data: { name: string; description?: string 
  * Updates an existing category. (Admin only)
  */
 export const updateCategory = async (id: string, data: { name?: string; description?: string }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to update category.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.put(`/categories/${id}`, data);
   return resData.category || resData.data;
 };
 
@@ -385,17 +229,7 @@ export const updateCategory = async (id: string, data: { name?: string; descript
  * Deletes a category. (Admin only)
  */
 export const deleteCategory = async (id: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/categories/${id}`, {
-    method: "DELETE",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to delete category.");
-  }
-
-  return resData;
+  return apiClient.delete(`/categories/${id}`);
 };
 
 /**
@@ -407,17 +241,8 @@ export const getLanguages = async (filters?: { active?: boolean }): Promise<any[
     queryParams.append("active", String(filters.active));
   }
 
-  const url = `${API_BASE_URL}/languages${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch languages.");
-  }
-
+  const endpoint = `/languages${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const resData = await apiClient.get(endpoint);
   return resData.languages || resData.data || [];
 };
 
@@ -425,20 +250,7 @@ export const getLanguages = async (filters?: { active?: boolean }): Promise<any[
  * Creates a new language. (Admin only)
  */
 export const createLanguage = async (data: { name: string; icon: string; isActive?: boolean }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/languages`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to create language.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.post('/languages', data);
   return resData.language || resData.data;
 };
 
@@ -446,20 +258,7 @@ export const createLanguage = async (data: { name: string; icon: string; isActiv
  * Updates an existing language. (Admin only)
  */
 export const updateLanguage = async (id: string, data: { name?: string; icon?: string; isActive?: boolean }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/languages/${id}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to update language.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.put(`/languages/${id}`, data);
   return resData.language || resData.data;
 };
 
@@ -467,17 +266,7 @@ export const updateLanguage = async (id: string, data: { name?: string; icon?: s
  * Deletes a language. (Admin only)
  */
 export const deleteLanguage = async (id: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/languages/${id}`, {
-    method: "DELETE",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to delete language.");
-  }
-
-  return resData;
+  return apiClient.delete(`/languages/${id}`);
 };
 
 /**
@@ -492,17 +281,8 @@ export const getTags = async (filters?: { active?: boolean; search?: string }): 
     queryParams.append("search", filters.search);
   }
 
-  const url = `${API_BASE_URL}/tags${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-  const response = await fetch(url, {
-    method: "GET",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to fetch tags.");
-  }
-
+  const endpoint = `/tags${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+  const resData = await apiClient.get(endpoint);
   return resData.tags || resData.data || [];
 };
 
@@ -510,20 +290,7 @@ export const getTags = async (filters?: { active?: boolean; search?: string }): 
  * Creates a new tag. (Admin only)
  */
 export const createTag = async (data: { name: string; color?: string; isActive?: boolean }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/tags`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to create tag.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.post('/tags', data);
   return resData.tag || resData.data;
 };
 
@@ -531,20 +298,7 @@ export const createTag = async (data: { name: string; color?: string; isActive?:
  * Updates an existing tag. (Admin only)
  */
 export const updateTag = async (id: string, data: { name?: string; color?: string; isActive?: boolean }): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/tags/${id}`, {
-    method: "PUT",
-    headers: getHeaders(),
-    body: JSON.stringify(data)
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    const errorMsg = resData.errors && resData.errors.length > 0
-      ? resData.errors.map((e: any) => e.message).join(", ")
-      : (resData.message || "Failed to update tag.");
-    throw new Error(errorMsg);
-  }
-
+  const resData = await apiClient.put(`/tags/${id}`, data);
   return resData.tag || resData.data;
 };
 
@@ -552,33 +306,14 @@ export const updateTag = async (id: string, data: { name?: string; color?: strin
  * Deletes a tag. (Admin only)
  */
 export const deleteTag = async (id: string): Promise<any> => {
-  const response = await fetch(`${API_BASE_URL}/tags/${id}`, {
-    method: "DELETE",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to delete tag.");
-  }
-
-  return resData;
+  return apiClient.delete(`/tags/${id}`);
 };
 
 /**
  * Toggles a snippet like state.
  */
 export const toggleSnippetLikeInDB = async (snippetId: string): Promise<{ liked: boolean; likes: number }> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/${snippetId}/like`, {
-    method: "POST",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to toggle like on snippet.");
-  }
-
+  const resData = await apiClient.post(`/snippets/${snippetId}/like`);
   return {
     liked: resData.liked,
     likes: resData.likes
@@ -589,21 +324,9 @@ export const toggleSnippetLikeInDB = async (snippetId: string): Promise<{ liked:
  * Toggles a comment like state.
  */
 export const toggleCommentLikeInDB = async (commentId: string): Promise<{ liked: boolean; likes: number }> => {
-  const response = await fetch(`${API_BASE_URL}/snippets/comments/${commentId}/like`, {
-    method: "POST",
-    headers: getHeaders()
-  });
-
-  const resData = await response.json();
-  if (!response.ok) {
-    throw new Error(resData.message || "Failed to toggle like on comment.");
-  }
-
+  const resData = await apiClient.post(`/snippets/comments/${commentId}/like`);
   return {
     liked: resData.liked,
     likes: resData.likes
   };
 };
-
-
-

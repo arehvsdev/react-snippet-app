@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, IconButton, Chip } from '@mui/material';
 import { Copy, Check, Edit, Globe, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import toast from 'react-hot-toast';
 
 interface CodeSnippetProps {
@@ -15,7 +15,7 @@ interface CodeSnippetProps {
   onEdit?: (id: string) => void;
 }
 
-export function CodeSnippet({
+export const CodeSnippet = memo(function CodeSnippet({
   id,
   title,
   language,
@@ -88,12 +88,22 @@ export function CodeSnippet({
             )}
             
             {onEdit && id && (
-              <IconButton onClick={() => onEdit(id)} size="small" sx={{ color: 'rgb(156, 163, 175)', '&:hover': { color: 'rgb(96, 165, 250)' } }}>
+              <IconButton 
+                onClick={() => onEdit(id)} 
+                size="small" 
+                aria-label={`Edit snippet ${title}`}
+                sx={{ color: 'rgb(156, 163, 175)', '&:hover': { color: 'rgb(96, 165, 250)' } }}
+              >
                 <Edit className="w-4.5 h-4.5" />
               </IconButton>
             )}
 
-            <IconButton onClick={handleCopy} size="small" sx={{ color: 'rgb(156, 163, 175)' }}>
+            <IconButton 
+              onClick={handleCopy} 
+              size="small" 
+              aria-label="Copy code to clipboard"
+              sx={{ color: 'rgb(156, 163, 175)' }}
+            >
               {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
             </IconButton>
           </div>
@@ -132,4 +142,4 @@ export function CodeSnippet({
       </CardContent>
     </Card>
   );
-}
+});

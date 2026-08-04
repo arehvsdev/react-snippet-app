@@ -131,9 +131,10 @@ export function SnippetFeed() {
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search snippets by title..."
+                  placeholder="Search snippets by title, description, code..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Search snippets"
                   className="w-full pl-9 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>
@@ -146,6 +147,7 @@ export function SnippetFeed() {
                 }`}
                 title="Advanced Filters"
                 aria-label="Advanced filters"
+                aria-expanded={showAdvanced}
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
@@ -223,6 +225,7 @@ export function SnippetFeed() {
                       <option value="title">Title</option>
                       <option value="views">Views</option>
                       <option value="likes">Likes</option>
+                      <option value="bookmarksCount">Bookmarks</option>
                     </select>
                   </div>
                   <div>
@@ -244,8 +247,9 @@ export function SnippetFeed() {
           {/* Snippet List Scroll Pane */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {loading ? (
-              <div className="flex justify-center items-center py-20">
+              <div className="flex justify-center items-center py-20" role="status" aria-busy="true">
                 <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                <span className="sr-only">Loading snippets...</span>
               </div>
             ) : snippets.length > 0 ? (
               snippets.map((snippet) => (
@@ -309,7 +313,22 @@ export function SnippetFeed() {
               <div className="text-center py-20">
                 <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-300 text-sm font-semibold">No snippets found</p>
-                <p className="text-gray-400 text-xs mt-1">Try adjusting your filters.</p>
+                <p className="text-gray-400 text-xs mt-1 mb-3">Try adjusting your filters or search keywords.</p>
+                {(search || language || category || tag || author || activeCategory) && (
+                  <button
+                    onClick={() => {
+                      setSearch('');
+                      setLanguage('');
+                      setCategory('');
+                      setTag('');
+                      setAuthor('');
+                      setActiveCategory(undefined);
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
               </div>
             )}
           </div>

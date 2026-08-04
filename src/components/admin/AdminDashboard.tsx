@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
 import { Users, Code2, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
@@ -281,34 +282,34 @@ export function AdminDashboard() {
 
           {/* Quick Actions */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-            <a
-              href="/admin/languages"
+            <Link
+              to="/admin/languages"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
             >
               <h3 className="text-lg font-semibold text-white mb-2">Manage Languages</h3>
               <p className="text-gray-400 text-sm">Add or edit programming languages</p>
-            </a>
-            <a
-              href="/admin/tags"
+            </Link>
+            <Link
+              to="/admin/tags"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
             >
               <h3 className="text-lg font-semibold text-white mb-2">Manage Tags</h3>
               <p className="text-gray-400 text-sm">Create and organize tags</p>
-            </a>
-            <a
-              href="/admin/categories"
+            </Link>
+            <Link
+              to="/admin/categories"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
             >
               <h3 className="text-lg font-semibold text-white mb-2">Manage Categories</h3>
               <p className="text-gray-400 text-sm">Create and organize categories</p>
-            </a>
-            <a
-              href="/admin/users"
+            </Link>
+            <Link
+              to="/admin/users"
               className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
             >
               <h3 className="text-lg font-semibold text-white mb-2">Manage Users</h3>
               <p className="text-gray-400 text-sm">View and manage user accounts</p>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
