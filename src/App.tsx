@@ -1,3 +1,7 @@
+/**
+ * Root Application Component
+ * Hosts global UI notifications (ToastProvider) and application route definitions (AppRoutes).
+ */
 import AppRoutes from "./routes/AppRoutes";
 import ToastProvider from "./components/common/ToastProvider";
 

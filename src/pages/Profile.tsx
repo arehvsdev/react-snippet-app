@@ -4,7 +4,7 @@ import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, P
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
-import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/user/user';
+import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/userService';
 import { getSnippets, getUserBookmarks, updateSnippet } from '../services/snippetService';
 import toast from 'react-hot-toast';
 

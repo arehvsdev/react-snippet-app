@@ -1,8 +1,13 @@
+/**
+ * Admin Route Wrapper Component
+ * Restricts access exclusively to users with the 'admin' role, displaying an Access Denied view otherwise.
+ */
 import { Outlet } from "react-router-dom";
 import { useAuth } from "../layouts/AuthContext";
 import { Layout } from "../pages/Layout";
 import { ShieldAlert } from "lucide-react";
 
+// Access Denied Fallback UI
 const NotAuthorized = () => (
     <Layout>
         <div className="flex h-[calc(100vh-4rem)] items-center justify-center bg-gray-900">

@@ -1,3 +1,7 @@
+/**
+ * Protected Route Wrapper Component
+ * Restricts route access to authenticated users only; redirects unauthenticated visitors to login.
+ */
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../layouts/AuthContext";
 
@@ -5,8 +9,7 @@ const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    // Redirect them to the /login page, but save the current location they were
-    // trying to go to. This allows us to send them along to that page after they login.
+    // Redirect unauthenticated visitors to root/login page
     return <Navigate to="/" replace />;
   }
 

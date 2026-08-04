@@ -1,3 +1,7 @@
+/**
+ * Centralized Application Routes Component
+ * Defines public, user-protected, and admin-protected route configurations with lazy loading and suspense fallback.
+ */
 import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
@@ -18,7 +22,7 @@ const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m =>
 const ManageCategories = lazy(() => import("../components/admin/ManageCategories").then(m => ({ default: m.ManageCategories })));
 const ManageUsers = lazy(() => import("../components/admin/ManageUsers").then(m => ({ default: m.ManageUsers })));
 
-// A simple 404 Not Found page
+// A simple 404 Not Found page component
 const NotFound = () => (
   <div className="flex h-screen items-center justify-center bg-gray-900">
     <h1 className="text-3xl text-white font-bold">404 - Page Not Found</h1>
@@ -41,7 +45,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
 
-        {/* Protected Routes */}
+        {/* Protected Routes for Authenticated Users */}
         <Route element={<ProtectedRoute />}>
           <Route path="/snippet-feed" element={<SnippetFeed />} />
           <Route path="/profile" element={<Profile />} />

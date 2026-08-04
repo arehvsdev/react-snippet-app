@@ -24,20 +24,8 @@ export function AdminDashboard() {
     snippetsCreatedToday: { value: 0, change: "Created today" }
   });
   const [userGrowthData, setUserGrowthData] = useState<any[]>([]);
-  const [growthRange, setGrowthRange] = useState<number>(6);
   const [snippetsByLanguage, setSnippetsByLanguage] = useState<any[]>([]);
   const [activityData, setActivityData] = useState<any[]>([]);
-
-  const fetchGrowthData = async (range: number) => {
-    try {
-      const res = await getDashboardUserGrowth(range);
-      if (res.success && Array.isArray(res.data)) {
-        setUserGrowthData(res.data);
-      }
-    } catch (err: any) {
-      console.error("Growth data fetch error:", err);
-    }
-  };
 
   const fetchStats = async () => {
     try {
@@ -47,7 +35,7 @@ export function AdminDashboard() {
       // Perform concurrent queries for optimal query times
       const [summaryRes, growthRes, langsRes, activityRes] = await Promise.all([
         getDashboardSummary(),
-        getDashboardUserGrowth(growthRange),
+        getDashboardUserGrowth(),
         getDashboardSnippetLanguages(),
         getDashboardWeeklyActivity()
       ]);

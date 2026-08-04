@@ -35,3 +35,41 @@ export const toggleUserStatus = async (id: string, active: boolean): Promise<any
 export const deleteUser = async (id: string): Promise<any> => {
   return apiClient.delete(`/admin/users/${id}`);
 };
+
+/**
+ * Service to manage User Profile actions using the apiClient helper
+ */
+export const getUserProfile = async (): Promise<any> => {
+  return apiClient.get('/users/profile');
+};
+
+export const updateUserProfile = async (data: { 
+  name?: string; 
+  fullName?: string;
+  username?: string; 
+  bio?: string; 
+  phonenumber?: string; 
+  phoneNumber?: string;
+}): Promise<any> => {
+  return apiClient.put('/users/profile', {
+    name: data.name || data.fullName,
+    username: data.username,
+    bio: data.bio,
+    phonenumber: data.phonenumber || data.phoneNumber
+  });
+};
+
+export const updateUserAvatar = async (fileOrFormData: File | FormData): Promise<any> => {
+  let formData: FormData;
+  if (fileOrFormData instanceof FormData) {
+    formData = fileOrFormData;
+  } else {
+    formData = new FormData();
+    formData.append("avatar", fileOrFormData);
+  }
+  return apiClient.upload('/users/avatar', formData);
+};
+
+export const changeUserPassword = async (data: { currentPassword?: string; newPassword?: string }): Promise<any> => {
+  return apiClient.put('/users/change-password', data);
+};
