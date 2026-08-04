@@ -132,10 +132,16 @@ export const deleteSnippet = async (id: string): Promise<any> => {
  */
 export const toggleBookmarkInDB = async (snippetId: string): Promise<{ bookmarked: boolean; bookmarksCount: number }> => {
   const resData = await apiClient.post(`/snippets/${snippetId}/bookmarks`);
-  return {
+  const result = {
     bookmarked: resData.bookmarked,
     bookmarksCount: resData.bookmarksCount || 0
   };
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('bookmark-changed', { detail: { bookmarked: result.bookmarked, snippetId } }));
+  }
+
+  return result;
 };
 
 /**

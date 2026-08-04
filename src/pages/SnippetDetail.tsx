@@ -48,7 +48,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
   const [likesCount, setLikesCount] = useState(snippet.likes);
   const [isLiked, setIsLiked] = useState(snippet.isLiked || false);
   const [isBookmarked, setIsBookmarked] = useState(snippet.isBookmarked || false);
-  const [bookmarksCount, setBookmarksCount] = useState(snippet.bookmarksCount || 0);
+  const [, setBookmarksCount] = useState(snippet.bookmarksCount || 0);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [commentPage, setCommentPage] = useState(1);
@@ -304,14 +304,15 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
           </button>
           <button
             onClick={handleToggleBookmark}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${
+            title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
+            aria-label={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
+            className={`flex items-center justify-center p-2.5 rounded-lg transition-colors border ${
               isBookmarked
                 ? 'bg-blue-600/10 text-blue-400 border-blue-500/20 hover:bg-blue-600/20'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-transparent'
             }`}
           >
             <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
-            <span>{isBookmarked ? 'Saved' : 'Save'} ({bookmarksCount})</span>
           </button>
         </div>
       </div>
@@ -349,7 +350,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
         <div className="flex items-center gap-2 mb-6">
           <MessageCircle className="w-5 h-5 text-gray-400" />
           <h2 className="text-xl font-bold text-white">
-            Comments ({commentPagination.totalItems})
+            Comments
           </h2>
         </div>
 
@@ -366,8 +367,8 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="w-full px-4 py-3 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 resize-none"
-                rows={3}
+                className="w-full px-3 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-sm text-white placeholder-gray-500 resize-none"
+                rows={2}
               />
               <div className="flex justify-end mt-2">
                 <button

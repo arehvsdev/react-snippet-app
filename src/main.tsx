@@ -12,7 +12,7 @@ import { AuthProvider } from './layouts/AuthContext';
 // Render top-level component hierarchy into HTML root element
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <App />
       </AuthProvider>

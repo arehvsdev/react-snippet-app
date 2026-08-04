@@ -5,12 +5,12 @@ import { RADII } from '../../constants/styles';
 
 
 // Shared Tailwind CSS classes for a consistent look and feel.
-const baseWrapperClasses = 'mb-4';
-const labelClasses = 'text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block';
-const errorTextClasses = 'text-[10px] text-red-400 font-medium ml-1 mt-1';
+const baseWrapperClasses = 'mb-3';
+const labelClasses = 'text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-1 block';
+const errorTextClasses = 'text-[10px] text-red-400 font-medium ml-1 mt-0.5';
 
 // Shared styles for form elements.
-const baseElementClasses = `w-full bg-[#1b1c1e] border px-4 h-11 text-sm font-medium text-white focus:outline-none focus:ring-2 placeholder:text-gray-500 transition-all ${RADII.element}`;
+const baseElementClasses = `w-full bg-[#1b1c1e] border px-3.5 h-10 text-sm font-medium text-white focus:outline-none focus:ring-2 placeholder:text-gray-500 transition-all ${RADII.element}`;
 const errorElementClasses = 'border-red-500 focus:border-red-500 focus:ring-red-500/10';
 const normalElementClasses = 'border-white/10 focus:border-purple-500 focus:ring-purple-500/10';
 

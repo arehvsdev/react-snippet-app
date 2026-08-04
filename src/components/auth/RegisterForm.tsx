@@ -133,94 +133,115 @@ const RegisterForm = () => {
 
   return (
     <form onSubmit={handleSubmit} autoComplete="off">
-      <Input
-        id="fullName"
-        label="Full Name"
-        type="text"
-        name="fullName"
-        value={formData.fullName}
-        onChange={handleFieldChange}
-        placeholder="John Doe"
-        required
-        error={errors.fullName}
-        autoComplete="off"
-      />
-      <Input
-        id="username"
-        label="Username"
-        type="text"
-        name="username"
-        value={formData.username}
-        onChange={handleFieldChange}
-        placeholder="johndoe"
-        required
-        error={errors.username}
-        autoComplete="off"
-      />
-      <Input
-        id="email"
-        label="Email"
-        type="email"
-        name="email"
-        value={formData.email}
-        onChange={handleFieldChange}
-        placeholder="you@example.com"
-        required
-        error={errors.email}
-        autoComplete="off"
-      />
-      <Input
-        id="phoneNumber"
-        label="Phone Number"
-        type="text"
-        name="phoneNumber"
-        value={formData.phoneNumber}
-        onChange={handleFieldChange}
-        placeholder="(123) 456-7890"
-        error={errors.phoneNumber}
-        autoComplete="off"
-      />
-      <Select
-        id="role"
-        label="Role"
-        name="role"
-        value={formData.role}
-        onChange={handleFieldChange}
-        placeholder="Select your role"
-        options={roleOptions}
-        required
-        error={errors.role}
-      />
-      <Input
-        id="password"
-        label="Password"
-        type="password"
-        name="password"
-        value={formData.password}
-        onChange={handleFieldChange}
-        placeholder="••••••••"
-        required
-        error={errors.password}
-        autoComplete="new-password"
-      />
-      <Input
-        id="confirmPassword"
-        label="Confirm Password"
-        type="password"
-        name="confirmPassword"
-        value={formData.confirmPassword}
-        onChange={handleFieldChange}
-        placeholder="••••••••"
-        required
-        error={errors.confirmPassword}
-        autoComplete="new-password"
-      />
-      <button
-        type="submit"
-        className="w-full bg-[#2563eb] text-white p-3 rounded-md hover:bg-[#1d4ed8] transition-colors duration-300 font-bold mt-2"
-      >
-        Register
-      </button>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-0">
+        {/* Row 1: Full Name & Username */}
+        <Input
+          id="fullName"
+          label="Full Name"
+          type="text"
+          name="fullName"
+          value={formData.fullName}
+          onChange={handleFieldChange}
+          placeholder="John Doe"
+          required
+          error={errors.fullName}
+          autoComplete="off"
+        />
+        <Input
+          id="username"
+          label="Username"
+          type="text"
+          name="username"
+          value={formData.username}
+          onChange={handleFieldChange}
+          placeholder="johndoe"
+          required
+          error={errors.username}
+          autoComplete="off"
+        />
+
+        {/* Row 2: Email (Single Full Line) */}
+        <div className="sm:col-span-2">
+          <Input
+            id="email"
+            label="Email"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleFieldChange}
+            placeholder="you@example.com"
+            required
+            error={errors.email}
+            autoComplete="off"
+          />
+        </div>
+
+        {/* Row 3: Phone Number & Role in same row (2 columns) */}
+        <Input
+          id="phoneNumber"
+          label="Phone Number"
+          type="text"
+          name="phoneNumber"
+          value={formData.phoneNumber}
+          onChange={handleFieldChange}
+          placeholder="(123) 456-7890"
+          error={errors.phoneNumber}
+          autoComplete="off"
+        />
+        <Select
+          id="role"
+          label="Role"
+          name="role"
+          value={formData.role}
+          onChange={handleFieldChange}
+          placeholder="Select your role"
+          options={roleOptions}
+          required
+          error={errors.role}
+        />
+
+        {/* Row 4: Password (Single Full Line) */}
+        <div className="sm:col-span-2">
+          <Input
+            id="password"
+            label="Password"
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleFieldChange}
+            placeholder="••••••••"
+            required
+            error={errors.password}
+            autoComplete="new-password"
+          />
+        </div>
+
+        {/* Row 5: Confirm Password (Single Full Line) */}
+        <div className="sm:col-span-2">
+          <Input
+            id="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleFieldChange}
+            placeholder="••••••••"
+            required
+            error={errors.confirmPassword}
+            autoComplete="new-password"
+          />
+        </div>
+
+        {/* Row 5: Register Button */}
+        <div className="sm:col-span-2 mt-1">
+          <button
+            type="submit"
+            className="w-full bg-[#2563eb] text-white py-2.5 px-4 rounded-md hover:bg-[#1d4ed8] transition-colors duration-300 font-bold"
+          >
+            Register
+          </button>
+        </div>
+      </div>
     </form>
   );
 };

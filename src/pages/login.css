@@ -27,3 +27,14 @@
   right: -150px;
   background-color: rgba(255, 255, 255, 0.07);
 }
+
+/* Custom hidden scrollbar for form container */
+.custom-scrollbar {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

@@ -62,31 +62,37 @@ export function Profile() {
   const fetchProfile = async () => {
     try {
       const profile = await getUserProfile();
+      const nameStr = profile?.fullName || user?.fullName || 'User';
+      const safeUsername = profile?.username || (typeof nameStr === 'string' ? nameStr.toLowerCase().replace(/\s+/g, '') : 'user');
       const activeUser = {
-        name: profile.fullName,
-        email: profile.email,
-        username: profile.username || profile.fullName.toLowerCase().replace(/\s+/g, ''),
-        bio: profile.bio || 'Full-stack developer passionate about clean code and open source',
-        avatar: profile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.fullName)}&background=3b82f6&color=fff`,
-        joinedDate: profile.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
-        phoneNumber: profile.phoneNumber
+        name: nameStr,
+        email: profile?.email || user?.email || '',
+        username: safeUsername,
+        bio: profile?.bio || 'Full-stack developer passionate about clean code and open source',
+        avatar: profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=3b82f6&color=fff`,
+        joinedDate: profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+        phoneNumber: profile?.phoneNumber || user?.phoneNumber
       };
       setCurrentUserData(activeUser);
       
       // Keep auth context updated
-      updateUser({
-        ...user,
-        ...profile
-      } as any);
+      if (profile) {
+        updateUser({
+          ...user,
+          ...profile
+        } as any);
+      }
     } catch (err: any) {
       console.error("Failed to load profile:", err);
       if (user) {
+        const fallbackName = user.fullName || 'User';
+        const fallbackUsername = user.username || (typeof fallbackName === 'string' ? fallbackName.toLowerCase().replace(/\s+/g, '') : 'user');
         setCurrentUserData({
-          name: user.fullName,
-          email: user.email,
-          username: user.username || user.fullName.toLowerCase().replace(/\s+/g, ''),
+          name: fallbackName,
+          email: user.email || '',
+          username: fallbackUsername,
           bio: user.bio || 'Full-stack developer passionate about clean code and open source',
-          avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=3b82f6&color=fff`,
+          avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=3b82f6&color=fff`,
           joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
           phoneNumber: user.phoneNumber
         });
@@ -290,20 +296,22 @@ export function Profile() {
                 </div>
 
                 <div className="w-full space-y-3">
-                  <button 
-                    onClick={handleOpenEditModal}
-                    className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-4 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium"
-                  >
-                    <Settings className="w-4 h-4" />
-                    Edit Profile
-                  </button>
-                  <button
-                    onClick={() => setIsPasswordModalOpen(true)}
-                    className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-4 py-2 rounded-lg transition-colors font-medium border border-gray-600"
-                  >
-                    <Key className="w-4 h-4" />
-                    Change Password
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button 
+                      onClick={handleOpenEditModal}
+                      className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-3 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium text-sm"
+                    >
+                      <Settings className="w-4 h-4 shrink-0" />
+                      <span>Edit Profile</span>
+                    </button>
+                    <button
+                      onClick={() => setIsPasswordModalOpen(true)}
+                      className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg transition-colors font-medium border border-gray-600 text-sm"
+                    >
+                      <Key className="w-4 h-4 shrink-0" />
+                      <span>Change Password</span>
+                    </button>
+                  </div>
                   <button
                     onClick={handleLogout}
                     className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"

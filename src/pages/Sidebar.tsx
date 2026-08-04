@@ -48,11 +48,25 @@ export function Sidebar({ activeCategory, onCategorySelect }: SidebarProps) {
 
     loadCategories();
     loadBookmarkCount();
+
+    const handleBookmarkEvent = (e: any) => {
+      const isBookmarked = e.detail?.bookmarked;
+      if (typeof isBookmarked === 'boolean') {
+        setBookmarkCount(prev => Math.max(0, prev + (isBookmarked ? 1 : -1)));
+      } else {
+        loadBookmarkCount();
+      }
+    };
+
+    window.addEventListener('bookmark-changed', handleBookmarkEvent);
+    return () => {
+      window.removeEventListener('bookmark-changed', handleBookmarkEvent);
+    };
   }, [user]);
 
   return (
-    <div className="hidden lg:block w-64 bg-gray-800 border-r border-gray-700 h-[calc(100vh-4rem)] overflow-y-auto sticky top-16 flex-shrink-0">
-      <div className="p-4">
+    <div className="hidden lg:block w-64 bg-gray-800 border-r border-gray-700 flex-shrink-0">
+      <div className="p-4 sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
         {/* Navigation */}
         <div className="mb-6">
           <button

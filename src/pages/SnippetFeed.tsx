@@ -123,8 +123,9 @@ export function SnippetFeed() {
         <Sidebar activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
 
         {/* Snippet List Container */}
-        <div className="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex flex-col h-auto lg:h-[calc(100vh-4rem)] flex-shrink-0">
-          {/* Search Header */}
+        <div className="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex-shrink-0">
+          <div className="sticky top-16 h-auto lg:h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
+            {/* Search Header */}
           <div className="p-4 border-b border-gray-700 bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 flex flex-col gap-3">
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
@@ -358,13 +359,14 @@ export function SnippetFeed() {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Detail View */}
-        <div className="flex-1 bg-gray-900 overflow-y-auto min-w-0">
+      {/* Detail View */}
+        <div className="flex-1 bg-gray-900 min-w-0">
           {selectedSnippet ? (
             <SnippetDetail snippet={selectedSnippet} />
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex items-center justify-center h-full min-h-[400px]">
               <div className="text-center">
                 <p className="text-gray-400 text-lg">Select a snippet to view details</p>
               </div>
