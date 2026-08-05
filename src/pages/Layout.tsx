@@ -54,55 +54,50 @@ export function Layout({ children }: LayoutProps) {
             <div className="hidden md:flex items-center gap-1">
               <button
                 onClick={() => navigate('/snippet-feed')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${
-                  isActive('/snippet-feed') || isActive('/')
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${isActive('/snippet-feed') || isActive('/')
                     ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <Home className="w-4 h-4" />
                 <span className="text-sm font-medium">Home</span>
               </button>
               <button
                 onClick={() => navigate('/create')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${
-                  isActive('/create')
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${isActive('/create')
                     ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <Plus className="w-4 h-4" />
                 <span className="text-sm font-medium">Create</span>
               </button>
               <button
                 onClick={() => navigate('/profile')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${
-                  isActive('/profile')
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${isActive('/profile')
                     ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <BookMarked className="w-4 h-4" />
                 <span className="text-sm font-medium">My Snippets</span>
               </button>
               <button
                 onClick={() => navigate('/pricing')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${
-                  isActive('/pricing')
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${isActive('/pricing')
                     ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <CreditCard className="w-4 h-4" />
                 <span className="text-sm font-medium">Pricing</span>
               </button>
               <button
                 onClick={() => navigate('/subscription')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${
-                  isActive('/subscription')
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors ${isActive('/subscription')
                     ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
                     : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 <span className="text-sm font-medium">Subscription</span>
@@ -113,7 +108,7 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center gap-3">
               {/* Notification Popover Dropdown */}
               <div className="relative">
-                <button 
+                <button
                   onClick={() => {
                     setShowNotifications(!showNotifications);
                     setHasUnread(false);
@@ -169,7 +164,7 @@ export function Layout({ children }: LayoutProps) {
                 aria-label="View user profile"
               >
                 <img
-                  src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `http://localhost:5000${user.avatar}`) : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`}
+                  src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_BASE_URL}${user.avatar}`) : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`}
                   alt={user?.fullName || 'User'}
                   className="w-8 h-8 rounded-lg object-cover border border-gray-600"
                 />
