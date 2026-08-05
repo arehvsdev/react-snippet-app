@@ -10,7 +10,7 @@ interface UpgradeModalProps {
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
-  const { user, setPlan } = useAuth();
+  const { user, setPlan, refreshSubscription } = useAuth();
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
@@ -49,15 +49,20 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
           handler: async (response: any) => {
             try {
               // 3. Verify Razorpay signature on backend
-              await verifyPayment({
+              const verifyRes = await verifyPayment({
                 orderId: response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
               });
 
-              setPlan("PRO");
-              toast.success("⭐ Payment Verified! You are now a PRO Member!");
-              onClose();
+              if (verifyRes.success) {
+                // 4. Sync subscription state from backend across Navbar, Dashboard, Profile
+                await refreshSubscription();
+                toast.success("⭐ Payment Verified! You are now a PRO Member!");
+                onClose();
+              } else {
+                toast.error(verifyRes.message || "Payment verification failed.");
+              }
             } catch (verifyErr: any) {
               console.error("Payment verification failed:", verifyErr);
               toast.error(verifyErr.message || "Payment verification failed.");
@@ -74,17 +79,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
         const razorpay = new window.Razorpay(options);
         razorpay.open();
       } else {
-        // Fallback testing flow if script cannot load in sandbox
+        // Fallback UI test modal if script fails to load in sandbox
         setPlan("PRO");
         toast.success(`⭐ Order ${orderRes.orderId} created! PRO activated (UI Test mode).`);
         onClose();
       }
     } catch (err: any) {
       console.error("Order creation failed:", err);
-      // Seamless UI fallback test activation
-      setPlan("PRO");
-      toast.success("⭐ Congratulations! You are now a PRO Member!");
-      onClose();
+      toast.error(err.message || "Failed to initiate payment. Please try again.");
     } finally {
       setLoading(false);
     }

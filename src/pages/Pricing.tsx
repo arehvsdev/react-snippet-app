@@ -8,7 +8,7 @@ import { createOrder, verifyPayment, loadRazorpayScript } from "../services/paym
 import { toast } from "react-hot-toast";
 
 export function Pricing() {
-  const { user, setPlan } = useAuth();
+  const { user, setPlan, refreshSubscription } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [loading, setLoading] = useState(false);
@@ -72,8 +72,8 @@ export function Pricing() {
               });
 
               if (verifyRes.success) {
-                // 4. Instantly update user context plan across Navbar, Profile, Dashboard, & Subscription pages
-                setPlan("PRO");
+                // Sync live subscription from backend — updates Navbar, Profile, Dashboard
+                await refreshSubscription();
                 toast.success("⭐ Payment Successful! PRO Membership Activated.");
               } else {
                 toast.error(verifyRes.message || "Payment Failed verification.");

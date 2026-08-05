@@ -3,9 +3,11 @@ import {
   useContext,
   useState,
   useEffect,
+  useCallback,
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { getSubscription } from "../services/paymentService";
 
 export interface User {
   uid: string;
@@ -29,6 +31,8 @@ interface AuthContextType {
   updateUser: (userData: User) => void;
   setPlan: (plan: "FREE" | "PRO") => void;
   togglePlan: () => void;
+  /** Fetches live subscription from backend and syncs AuthContext + localStorage. */
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -87,6 +91,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setPlan(newPlan);
   };
 
+  /**
+   * Fetches live subscription data from backend and syncs context + localStorage.
+   * Call this after a successful payment to reflect PRO status immediately.
+   */
+  const refreshSubscription = useCallback(async () => {
+    if (!localStorage.getItem("token")) return;
+    try {
+      const subscription = await getSubscription();
+      if (!user) return;
+      const updated = { ...user, plan: subscription.plan };
+      localStorage.setItem("user", JSON.stringify(updated));
+      setUser(updated);
+    } catch {
+      // Silently fail — UI keeps its current state
+    }
+  }, [user]);
+
   const value = {
     user,
     login,
@@ -95,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     updateUser,
     setPlan,
     togglePlan,
+    refreshSubscription,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

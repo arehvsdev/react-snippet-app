@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Sparkles, Crown, ShieldCheck, ArrowRight } from "lucide-react";
 import { useAuth } from "../../layouts/AuthContext";
 import { PlanBadge } from "./PlanBadge";
 import { UpgradeModal } from "./UpgradeModal";
+import { getSubscription } from "../../services/paymentService";
 
 interface SubscriptionWidgetProps {
   className?: string;
@@ -13,8 +14,27 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
 }) => {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [paymentDate, setPaymentDate] = useState<string | null>(null);
 
   const isPro = user?.plan === "PRO";
+
+  // Fetch payment date for PRO users to display in widget
+  useEffect(() => {
+    if (!isPro) return;
+    getSubscription()
+      .then((sub) => {
+        if (sub.paymentDate) {
+          setPaymentDate(
+            new Date(sub.paymentDate).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })
+          );
+        }
+      })
+      .catch(() => {});
+  }, [isPro]);
 
   if (isPro) {
     return (
@@ -36,7 +56,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-gray-400">
-              Your PRO tier enables unlimited private code storage & gold badge rendering.
+              Your PRO tier enables unlimited private code storage &amp; gold badge rendering.
             </p>
           </div>
 
@@ -44,7 +64,9 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
             <span className="flex items-center gap-1 text-emerald-400 font-medium">
               <ShieldCheck className="w-3.5 h-3.5" /> Premium Active
             </span>
-            <span className="text-[10px] text-gray-500">Auto-renews monthly</span>
+            <span className="text-[10px] text-gray-500">
+              {paymentDate ? `Since ${paymentDate}` : "Auto-renews monthly"}
+            </span>
           </div>
         </div>
       </>
@@ -71,7 +93,7 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
 
           <div className="flex justify-between items-center text-xs">
             <span className="text-gray-400 font-medium">Private Snippets</span>
-            <span className="font-bold text-red-400">None (0)</span>
+            <span className="font-bold text-amber-400">Max 5</span>
           </div>
 
           <div className="flex justify-between items-center text-xs">

@@ -32,6 +32,25 @@ export interface VerifyPaymentResponse {
   };
 }
 
+export interface SubscriptionData {
+  plan: "FREE" | "PRO";
+  status: string;
+  paymentId: string | null;
+  paymentDate: string | null;
+}
+
+export interface PaymentRecord {
+  _id: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  orderId: string;
+  paymentId: string | null;
+  status: "CREATED" | "SUCCESS" | "FAILED";
+  gateway: string;
+  createdAt: string;
+}
+
 /**
  * Dynamically loads the Razorpay checkout.js script into the DOM.
  */
@@ -56,6 +75,22 @@ export const loadRazorpayScript = (): Promise<boolean> => {
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
   });
+};
+
+/**
+ * Fetches the authenticated user's current subscription from the backend.
+ */
+export const getSubscription = async (): Promise<SubscriptionData> => {
+  const res = await apiClient.get("/subscription");
+  return res.data?.subscription || { plan: "FREE", status: "ACTIVE", paymentId: null, paymentDate: null };
+};
+
+/**
+ * Fetches paginated payment transaction history for the authenticated user.
+ */
+export const getPaymentHistory = async (page = 1, limit = 10): Promise<{ payments: PaymentRecord[]; pagination: any }> => {
+  const res = await apiClient.get(`/payment/history?page=${page}&limit=${limit}`);
+  return { payments: res.data || [], pagination: res.pagination || {} };
 };
 
 /**
