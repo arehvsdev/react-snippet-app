@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus, Key } from 'lucide-react';
+import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus, Key, Compass } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/userService';
 import { getSnippets, getUserBookmarks, updateSnippet } from '../services/snippetService';
 import toast from 'react-hot-toast';
+import { PlanBadge } from '../components/subscription/PlanBadge';
+import { SubscriptionWidget } from '../components/subscription/SubscriptionWidget';
 
 export function Profile() {
   const navigate = useNavigate();
@@ -15,6 +17,11 @@ export function Profile() {
   const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
+  
+  // Bookmarks Pagination States
+  const [bookmarkPage, setBookmarkPage] = useState(1);
+  const [bookmarkPagination, setBookmarkPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
+  const [loadingBookmarks, setLoadingBookmarks] = useState(false);
 
   // Avatar upload ref
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -31,21 +38,39 @@ export function Profile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
 
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
     if (!currentPassword) {
-      toast.error('Current password is required');
+      newErrors.currentPassword = 'Current password is required.';
+    }
+
+    if (!newPassword) {
+      newErrors.newPassword = 'New password is required.';
+    } else if (newPassword.length < 8) {
+      newErrors.newPassword = 'New password must be at least 8 characters long.';
+    } else {
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])/;
+      if (!passwordRegex.test(newPassword)) {
+        newErrors.newPassword = 'Password must include uppercase, lowercase, number, and special character (@$!%*?&#.).';
+      }
+    }
+
+    if (!confirmNewPassword) {
+      newErrors.confirmNewPassword = 'Please confirm your new password.';
+    } else if (newPassword && newPassword !== confirmNewPassword) {
+      newErrors.confirmNewPassword = 'Passwords do not match.';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setPasswordErrors(newErrors);
       return;
     }
-    if (!newPassword || newPassword.length < 8) {
-      toast.error('New password must be at least 8 characters long');
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast.error('New passwords do not match');
-      return;
-    }
+
+    setPasswordErrors({});
 
     try {
       await changeUserPassword({ currentPassword, newPassword });
@@ -54,8 +79,11 @@ export function Profile() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmNewPassword('');
+      setPasswordErrors({});
     } catch (err: any) {
-      toast.error(err.message || 'Failed to change password');
+      const msg = err.message || 'Failed to change password';
+      toast.error(msg);
+      setPasswordErrors({ general: msg });
     }
   };
 
@@ -194,20 +222,47 @@ export function Profile() {
 
     fetchProfile();
 
-    const loadUserSnippetsAndBookmarks = async () => {
+    const loadUserSnippets = async () => {
       try {
         const snippetsData = await getSnippets({ userId });
         setUserSnippets(snippetsData);
-        
-        const bookmarksData = await getUserBookmarks();
-        setBookmarkedSnippets(bookmarksData);
       } catch (err) {
-        console.error("Failed to load user snippets or bookmarks:", err);
+        console.error("Failed to load user snippets:", err);
       }
     };
-    loadUserSnippetsAndBookmarks();
+    loadUserSnippets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, navigate]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const loadBookmarks = async () => {
+      try {
+        setLoadingBookmarks(true);
+        const bookmarksData = await getUserBookmarks({ page: bookmarkPage, limit: 5 });
+        setBookmarkedSnippets(bookmarksData);
+        const pag = (bookmarksData as any).pagination;
+        if (pag) {
+          setBookmarkPagination({
+            totalPages: pag.totalPages || pag.pages || 1,
+            totalItems: pag.totalItems || pag.total || bookmarksData.length,
+            currentPage: pag.currentPage || pag.page || bookmarkPage
+          });
+        } else {
+          setBookmarkPagination({
+            totalPages: 1,
+            totalItems: bookmarksData.length,
+            currentPage: 1
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load bookmarks:", err);
+      } finally {
+        setLoadingBookmarks(false);
+      }
+    };
+    loadBookmarks();
+  }, [userId, bookmarkPage]);
 
   if (!user || !currentUserData) {
     return null;
@@ -274,7 +329,10 @@ export function Profile() {
                   />
                 </div>
 
-                <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
+                  <PlanBadge plan={user?.plan || "FREE"} size="sm" />
+                </div>
                 <p className="text-gray-400 mb-1">@{currentUserData.username}</p>
                 <p className="text-sm text-gray-500 mb-4">Joined {currentUserData.joinedDate}</p>
 
@@ -293,6 +351,11 @@ export function Profile() {
                     <span className="text-gray-400">Bookmarks</span>
                     <span className="font-medium text-white">{bookmarkedSnippets.length}</span>
                   </div>
+                </div>
+
+                {/* Subscription Card Widget */}
+                <div className="w-full mb-6 text-left">
+                  <SubscriptionWidget />
                 </div>
 
                 <div className="w-full space-y-3">
@@ -439,26 +502,74 @@ export function Profile() {
                 <div className="flex items-center gap-2 mb-4">
                   <Bookmark className="w-5 h-5 text-blue-400" />
                   <h3 className="text-xl font-bold text-white">
-                    Bookmarked Snippets ({bookmarkedSnippets.length})
+                    Bookmarked Snippets ({bookmarkPagination.totalItems || bookmarkedSnippets.length})
                   </h3>
                 </div>
-                <div className="space-y-4">
-                  {bookmarkedSnippets.map((snippet) => {
-                    const isOwner = user && snippet.author?.username === user.username;
-                    return (
-                      <CodeSnippet
-                        key={snippet.id}
-                        id={snippet.id}
-                        title={snippet.title}
-                        language={snippet.language}
-                        code={snippet.code}
-                        description={snippet.description}
-                        tags={snippet.tags}
-                        onEdit={isOwner ? handleEdit : undefined}
-                      />
-                    );
-                  })}
-                </div>
+
+                {loadingBookmarks ? (
+                  <div className="flex justify-center items-center py-20" role="status" aria-busy="true">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    <span className="sr-only">Loading bookmarked snippets...</span>
+                  </div>
+                ) : bookmarkedSnippets.length > 0 ? (
+                  <div className="space-y-4">
+                    {bookmarkedSnippets.map((snippet) => {
+                      const isOwner = user && snippet.author?.username === user.username;
+                      return (
+                        <CodeSnippet
+                          key={snippet.id}
+                          id={snippet.id}
+                          title={snippet.title}
+                          language={snippet.language}
+                          code={snippet.code}
+                          description={snippet.description}
+                          tags={snippet.tags}
+                          onEdit={isOwner ? handleEdit : undefined}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-16 bg-gray-800/40 border border-gray-700/50 rounded-2xl p-8">
+                    <Bookmark className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-gray-300 mb-2">No bookmarked snippets yet</h3>
+                    <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
+                      Start bookmarking code snippets from the feed to access your personal collection anytime.
+                    </p>
+                    <button
+                      onClick={() => navigate('/')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm shadow-lg shadow-blue-500/20"
+                    >
+                      <Compass className="w-4 h-4" />
+                      Explore Snippets
+                    </button>
+                  </div>
+                )}
+
+                {/* Pagination Controls */}
+                {!loadingBookmarks && bookmarkPagination.totalPages > 1 && (
+                  <div className="mt-8 flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg p-4">
+                    <button
+                      disabled={bookmarkPage <= 1}
+                      onClick={() => setBookmarkPage(prev => Math.max(1, prev - 1))}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
+                      aria-label="Previous page of bookmarks"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm font-semibold text-gray-400">
+                      Page {bookmarkPage} of {bookmarkPagination.totalPages} (Total: {bookmarkPagination.totalItems})
+                    </span>
+                    <button
+                      disabled={bookmarkPage >= bookmarkPagination.totalPages}
+                      onClick={() => setBookmarkPage(prev => Math.min(bookmarkPagination.totalPages, prev + 1))}
+                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
+                      aria-label="Next page of bookmarks"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -573,18 +684,28 @@ export function Profile() {
             </div>
             
             <form onSubmit={handleSavePassword} className="p-6 space-y-4">
+              {passwordErrors.general && (
+                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
+                  {passwordErrors.general}
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">
                   Current Password <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
-                  required
                   value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  onChange={(e) => {
+                    setCurrentPassword(e.target.value);
+                    setPasswordErrors(prev => ({ ...prev, currentPassword: '' }));
+                  }}
+                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.currentPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
                   placeholder="••••••••"
                 />
+                {passwordErrors.currentPassword && (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.currentPassword}</p>
+                )}
               </div>
 
               <div>
@@ -593,13 +714,19 @@ export function Profile() {
                 </label>
                 <input
                   type="password"
-                  required
                   value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setPasswordErrors(prev => ({ ...prev, newPassword: '' }));
+                  }}
+                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.newPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
                   placeholder="••••••••"
                 />
-                <p className="text-xs text-gray-400 mt-1">At least 8 chars with uppercase, lowercase, number & special char.</p>
+                {passwordErrors.newPassword ? (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.newPassword}</p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-1">At least 8 chars with uppercase, lowercase, number & special char.</p>
+                )}
               </div>
 
               <div>
@@ -608,12 +735,17 @@ export function Profile() {
                 </label>
                 <input
                   type="password"
-                  required
                   value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition"
+                  onChange={(e) => {
+                    setConfirmNewPassword(e.target.value);
+                    setPasswordErrors(prev => ({ ...prev, confirmNewPassword: '' }));
+                  }}
+                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.confirmNewPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
                   placeholder="••••••••"
                 />
+                {passwordErrors.confirmNewPassword && (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.confirmNewPassword}</p>
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">

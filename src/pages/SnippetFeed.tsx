@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search } from 'lucide-react';
+import { Heart, MessageCircle, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Filter } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';
@@ -30,6 +30,7 @@ export function SnippetFeed() {
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // Advanced Search & Sorting State
   const [search, setSearch] = useState('');
@@ -120,7 +121,33 @@ export function SnippetFeed() {
     <Layout>
       <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)] bg-gray-900">
         {/* Sidebar */}
-        <Sidebar activeCategory={activeCategory} onCategorySelect={setActiveCategory} />
+        <Sidebar 
+          activeCategory={activeCategory} 
+          onCategorySelect={setActiveCategory}
+          isOpenMobile={isMobileSidebarOpen}
+          onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        />
+
+        {/* Mobile Category Bar (Visible only on small screens) */}
+        <div className="lg:hidden p-3 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
+          <button
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="flex items-center gap-2 text-xs font-semibold text-gray-300 bg-gray-900 px-3 py-2 rounded-lg border border-gray-700 hover:text-white hover:border-blue-500 transition-all shadow-sm"
+            aria-label="Open categories menu"
+          >
+            <Filter className="w-3.5 h-3.5 text-blue-400" />
+            <span>Categories {activeCategory ? `(Filtered)` : ''}</span>
+          </button>
+
+          {activeCategory && (
+            <button
+              onClick={() => setActiveCategory(undefined)}
+              className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              Clear Category Filter
+            </button>
+          )}
+        </div>
 
         {/* Snippet List Container */}
         <div className="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex-shrink-0">

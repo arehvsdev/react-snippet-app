@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Bookmark, Calendar, Code2, Compass } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { Sidebar } from './Sidebar';
 import { getUserBookmarks } from '../services/snippetService';
+import { SubscriptionEmptyState } from '../components/common/SubscriptionEmptyState';
 
 export function Bookmarks() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export function Bookmarks() {
   const [pagination, setPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const [uniqueLanguagesCount, setUniqueLanguagesCount] = useState(0);
 
   useEffect(() => {
     const loadBookmarks = async () => {
@@ -23,9 +26,11 @@ export function Bookmarks() {
         if (pag) {
           setPagination(pag);
           setTotalCount(pag.totalItems);
+          setUniqueLanguagesCount(pag.uniqueLanguages !== undefined ? pag.uniqueLanguages : new Set(data.map((b: any) => b.language)).size);
         } else {
           setPagination({ totalPages: 1, totalItems: data.length, currentPage: 1 });
           setTotalCount(data.length);
+          setUniqueLanguagesCount(new Set(data.map((b: any) => b.language)).size);
         }
       } catch (err) {
         console.error("Failed to load bookmarks:", err);
@@ -35,10 +40,6 @@ export function Bookmarks() {
     };
     loadBookmarks();
   }, [page]);
-
-  const uniqueLanguages = useMemo(() => {
-    return new Set(bookmarkedSnippets.map(b => b.language)).size;
-  }, [bookmarkedSnippets]);
 
   return (
     <Layout>
@@ -75,7 +76,7 @@ export function Bookmarks() {
                 <div className="flex items-center gap-3">
                   <Code2 className="w-5 h-5 text-green-400" />
                   <div>
-                    <p className="text-2xl font-bold text-white">{uniqueLanguages}</p>
+                    <p className="text-2xl font-bold text-white">{uniqueLanguagesCount}</p>
                     <p className="text-sm text-gray-400">Languages</p>
                   </div>
                 </div>
@@ -90,6 +91,9 @@ export function Bookmarks() {
                 </div>
               </div>
             </div>
+
+            {/* Subscription Bookmark Placeholder Banner */}
+            <SubscriptionEmptyState type="bookmarks" />
 
             {/* Content Loading vs Cards */}
             {loading ? (

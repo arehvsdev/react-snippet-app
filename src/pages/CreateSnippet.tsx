@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { ArrowLeft } from 'lucide-react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Sparkles, Crown, ShieldCheck } from 'lucide-react';
 import { Layout } from './Layout';
+import { useAuth } from '../layouts/AuthContext';
+import { PlanBadge } from '../components/subscription/PlanBadge';
+import { UpgradeModal } from '../components/subscription/UpgradeModal';
 import { createSnippet, updateSnippet, getSnippetById, getLanguages, getTags } from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 export function CreateSnippet() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
+  const isPro = user?.plan === 'PRO';
   
   const isEditMode = !!id;
 
@@ -24,6 +29,7 @@ export function CreateSnippet() {
   const [code, setCode] = useState('');
   const [languagesList, setLanguagesList] = useState<any[]>([]);
   const [isPublic, setIsPublic] = useState(true);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // 3. State to track validation errors
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -149,9 +155,43 @@ export function CreateSnippet() {
           <h1 className="text-3xl font-bold text-white mb-2">
             {isEditMode ? 'Edit Snippet' : 'Create New Snippet'}
           </h1>
-          <p className="text-gray-400 mb-8">
+          <p className="text-gray-400 mb-6">
             {isEditMode ? 'Modify your code snippet details' : 'Add a new code snippet to your collection'}
           </p>
+
+          {/* Subscription Notice Banner */}
+          {!isPro ? (
+            <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-amber-500/10 border border-blue-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-semibold text-white">Free Plan Notice: </span>
+                  <span className="text-gray-300">Free plan users can create up to 3 snippets. <strong className="text-amber-400">Upgrade to PRO for unlimited snippets & private storage</strong>.</span>
+                </div>
+              </div>
+              <Link
+                to="/pricing"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-400 text-xs shadow-md shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5 fill-current" /> Upgrade to PRO
+              </Link>
+            </div>
+          ) : (
+            <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs sm:text-sm">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                  <Crown className="w-5 h-5 fill-current" />
+                </div>
+                <div>
+                  <span className="font-bold text-amber-300">PRO Membership Active: </span>
+                  <span className="text-gray-300">Unlimited private code snippets enabled for your account.</span>
+                </div>
+              </div>
+              <PlanBadge plan="PRO" size="sm" />
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title Field */}
@@ -396,6 +436,7 @@ export function CreateSnippet() {
           </form>
         </div>
       </div>
+      <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
     </Layout>
   );
 }

@@ -18,6 +18,7 @@ export interface User {
   username?: string;
   bio?: string;
   avatar?: string;
+  plan?: "FREE" | "PRO";
 }
 
 interface AuthContextType {
@@ -26,6 +27,8 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   updateUser: (userData: User) => void;
+  setPlan: (plan: "FREE" | "PRO") => void;
+  togglePlan: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,12 +40,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsed = JSON.parse(storedUser);
+      if (!parsed.plan) {
+        parsed.plan = "FREE";
+      }
+      setUser(parsed);
     }
   }, []);
 
   const login = (userData: User & { token?: string }) => {
     const { token, ...userWithoutToken } = userData;
+    if (!userWithoutToken.plan) {
+      userWithoutToken.plan = "FREE";
+    }
     if (token) {
       localStorage.setItem("token", token);
     }
@@ -59,11 +69,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUser = (userData: User) => {
-    localStorage.setItem("user", JSON.stringify(userData));
-    setUser(userData);
+    const updated = { ...userData, plan: userData.plan || user?.plan || "FREE" };
+    localStorage.setItem("user", JSON.stringify(updated));
+    setUser(updated);
   };
 
-  const value = { user, login, logout, isAuthenticated: !!user, updateUser };
+  const setPlan = (newPlan: "FREE" | "PRO") => {
+    if (!user) return;
+    const updated = { ...user, plan: newPlan };
+    localStorage.setItem("user", JSON.stringify(updated));
+    setUser(updated);
+  };
+
+  const togglePlan = () => {
+    if (!user) return;
+    const newPlan = user.plan === "PRO" ? "FREE" : "PRO";
+    setPlan(newPlan);
+  };
+
+  const value = {
+    user,
+    login,
+    logout,
+    isAuthenticated: !!user,
+    updateUser,
+    setPlan,
+    togglePlan,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

@@ -15,6 +15,7 @@ const SnippetFeed = lazy(() => import("../pages/SnippetFeed").then(m => ({ defau
 const Profile = lazy(() => import("../pages/Profile").then(m => ({ default: m.Profile })));
 const CreateSnippet = lazy(() => import("../pages/CreateSnippet").then(m => ({ default: m.CreateSnippet })));
 const Subscription = lazy(() => import("../pages/Subscription").then(m => ({ default: m.Subscription })));
+const Pricing = lazy(() => import("../pages/Pricing").then(m => ({ default: m.Pricing })));
 const Bookmarks = lazy(() => import("../pages/Bookmarks").then(m => ({ default: m.Bookmarks })));
 const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 const ManageLanguages = lazy(() => import("../components/admin/ManageLanguages").then(m => ({ default: m.ManageLanguages })));
@@ -44,6 +45,7 @@ const AppRoutes = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
+        <Route path="/pricing" element={<Pricing />} />
 
         {/* Protected Routes for Authenticated Users */}
         <Route element={<ProtectedRoute />}>

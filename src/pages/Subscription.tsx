@@ -1,211 +1,155 @@
-
-import { Check, Crown } from 'lucide-react';
-import { Layout } from './Layout';
-
-const plans = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: 'forever',
-    description: 'Perfect for getting started',
-    features: [
-      'Up to 50 snippets',
-      'Public snippets only',
-      'Basic search',
-      'Community support',
-      '5 bookmarks'
-    ],
-    highlighted: false,
-    buttonText: 'Current Plan',
-    buttonClass: 'bg-gray-700 text-gray-300 cursor-not-allowed'
-  },
-  {
-    name: 'Pro',
-    price: '$9',
-    period: 'per month',
-    description: 'For professional developers',
-    features: [
-      'Unlimited snippets',
-      'Public & private snippets',
-      'Advanced search & filtering',
-      'Priority support',
-      'Unlimited bookmarks',
-      'Custom categories',
-      'Code analytics',
-      'Export snippets'
-    ],
-    highlighted: true,
-    buttonText: 'Upgrade to Pro',
-    buttonClass: 'bg-blue-600 text-white hover:bg-blue-700'
-  },
-  {
-    name: 'Team',
-    price: '$29',
-    period: 'per month',
-    description: 'For teams and organizations',
-    features: [
-      'Everything in Pro',
-      'Team collaboration',
-      'Shared snippet libraries',
-      'Team analytics',
-      'Admin dashboard',
-      'SSO authentication',
-      'Custom integrations',
-      'Dedicated support'
-    ],
-    highlighted: false,
-    buttonText: 'Upgrade to Team',
-    buttonClass: 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-  }
-];
+import { useState } from "react";
+import { Layout } from "./Layout";
+import { Sparkles, ShieldCheck, Crown, Calendar, CheckCircle2, ArrowRight, RefreshCcw } from "lucide-react";
+import { useAuth } from "../layouts/AuthContext";
+import { PlanBadge } from "../components/subscription/PlanBadge";
+import { UpgradeModal } from "../components/subscription/UpgradeModal";
+import { toast } from "react-hot-toast";
 
 export function Subscription() {
+  const { user, setPlan } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const isPro = user?.plan === "PRO";
+
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "Aug 2026";
+
+  const handleDowngrade = () => {
+    setPlan("FREE");
+    toast.success("Switched back to FREE plan");
+  };
+
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-900 py-12">
-        <div className="max-w-7xl mx-auto px-4">
+      <div className="min-h-screen bg-gray-900 py-12 px-4 sm:px-6 lg:px-8 text-white">
+        <div className="max-w-4xl mx-auto space-y-8">
           {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-white mb-4">Choose Your Plan</h1>
-            <p className="text-xl text-gray-400">
-              Unlock premium features and boost your productivity
-            </p>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-800/80 border border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-extrabold text-white">Subscription Management</h1>
+                <PlanBadge plan={user?.plan || "FREE"} size="md" />
+              </div>
+              <p className="text-xs sm:text-sm text-gray-400">
+                View your current membership tier, payment verification status, and plan privileges.
+              </p>
+            </div>
+
+            {!isPro ? (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="w-full sm:w-auto py-3 px-5 rounded-2xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 active:scale-98 text-sm"
+              >
+                <Sparkles className="w-4 h-4 fill-current" /> Upgrade to PRO
+              </button>
+            ) : (
+              <button
+                onClick={handleDowngrade}
+                className="w-full sm:w-auto py-2.5 px-4 rounded-xl text-xs font-semibold text-gray-400 hover:text-white bg-gray-900/60 hover:bg-gray-700 border border-gray-700 transition-colors flex items-center justify-center gap-1.5"
+              >
+                <RefreshCcw className="w-3.5 h-3.5" /> Switch to FREE
+              </button>
+            )}
           </div>
 
-          {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
-            {plans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`bg-gray-800 border-2 rounded-2xl p-8 ${plan.highlighted
-                    ? 'border-blue-500 relative transform scale-105'
-                    : 'border-gray-700'
-                  }`}
-              >
-                {plan.highlighted && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
-                      <Crown className="w-4 h-4" />
-                      Most Popular
-                    </div>
-                  </div>
-                )}
+          {/* Current Membership Overview Card */}
+          <div className="bg-gray-800/80 border border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              {isPro ? (
+                <>
+                  <Crown className="w-5 h-5 text-amber-400 fill-current" /> ⭐ PRO MEMBER Overview
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-5 h-5 text-blue-400" /> Current Plan Overview
+                </>
+              )}
+            </h2>
 
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-gray-400 text-sm mb-4">{plan.description}</p>
-                  <div className="mb-4">
-                    <span className="text-5xl font-bold text-white">{plan.price}</span>
-                    <span className="text-gray-400 ml-2">/{plan.period}</span>
-                  </div>
+            {/* Status Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-700/60 space-y-1">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Current Plan</span>
+                <p className="text-lg font-bold text-white flex items-center gap-2">
+                  {user?.plan || "FREE"}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-700/60 space-y-1">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</span>
+                <p className="text-lg font-bold text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" /> Active
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-700/60 space-y-1">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Member Since</span>
+                <p className="text-lg font-bold text-white flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-gray-400" /> {memberSince}
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-gray-900/60 border border-gray-700/60 space-y-1">
+                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Payment Status</span>
+                <p className="text-lg font-bold text-blue-400 flex items-center gap-1.5">
+                  {isPro ? "Verified (UI)" : "N/A (Free Tier)"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* PRO Privileges Showcase */}
+          <div className="bg-gray-800/80 border border-gray-700/80 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
+            <h2 className="text-xl font-bold text-white">Subscription Benefits</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-gray-900/40 border border-gray-700/50 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
+                  <ShieldCheck className="w-5 h-5" />
                 </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-white">Private Snippet Quota</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {isPro ? "Unlimited private code storage enabled." : "No Private Snippets allowed on Free tier."}
+                  </p>
+                </div>
+              </div>
 
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div className="p-4 rounded-2xl bg-gray-900/40 border border-gray-700/50 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                  <Crown className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-white">Gold PRO Badge</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {isPro ? "Active & rendered across navbar, profile & comments." : "Upgrade to PRO to showcase badge across UI."}
+                  </p>
+                </div>
+              </div>
+            </div>
 
+            {!isPro && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-yellow-500/5 to-transparent border border-amber-500/30 flex items-center justify-between gap-4">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-bold text-amber-300">Ready to unlock unlimited private storage?</p>
+                  <p className="text-xs text-gray-400">Get unlimited private snippets and premium badges for ₹199/month.</p>
+                </div>
                 <button
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors ${plan.buttonClass}`}
-                  disabled={plan.name === 'Free'}
+                  onClick={() => setIsModalOpen(true)}
+                  className="py-2.5 px-4 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-400 text-xs flex items-center gap-1 flex-shrink-0"
                 >
-                  {plan.buttonText}
+                  Upgrade <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            ))}
-          </div>
-
-          {/* Features Comparison */}
-          <div className="bg-gray-800 border border-gray-700 rounded-2xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Feature Comparison</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left py-4 px-6 text-gray-300 font-semibold">Feature</th>
-                    <th className="text-center py-4 px-6 text-gray-300 font-semibold">Free</th>
-                    <th className="text-center py-4 px-6 text-gray-300 font-semibold">Pro</th>
-                    <th className="text-center py-4 px-6 text-gray-300 font-semibold">Team</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-4 px-6 text-gray-300">Snippets</td>
-                    <td className="py-4 px-6 text-center text-gray-400">50</td>
-                    <td className="py-4 px-6 text-center text-green-400">Unlimited</td>
-                    <td className="py-4 px-6 text-center text-green-400">Unlimited</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-4 px-6 text-gray-300">Private Snippets</td>
-                    <td className="py-4 px-6 text-center text-red-400">✕</td>
-                    <td className="py-4 px-6 text-center text-green-400">✓</td>
-                    <td className="py-4 px-6 text-center text-green-400">✓</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-4 px-6 text-gray-300">Advanced Search</td>
-                    <td className="py-4 px-6 text-center text-red-400">✕</td>
-                    <td className="py-4 px-6 text-center text-green-400">✓</td>
-                    <td className="py-4 px-6 text-center text-green-400">✓</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-4 px-6 text-gray-300">Team Collaboration</td>
-                    <td className="py-4 px-6 text-center text-red-400">✕</td>
-                    <td className="py-4 px-6 text-center text-red-400">✕</td>
-                    <td className="py-4 px-6 text-center text-green-400">✓</td>
-                  </tr>
-                  <tr className="border-b border-gray-700">
-                    <td className="py-4 px-6 text-gray-300">Analytics</td>
-                    <td className="py-4 px-6 text-center text-red-400">✕</td>
-                    <td className="py-4 px-6 text-center text-green-400">Basic</td>
-                    <td className="py-4 px-6 text-center text-green-400">Advanced</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-6 text-gray-300">Support</td>
-                    <td className="py-4 px-6 text-center text-gray-400">Community</td>
-                    <td className="py-4 px-6 text-center text-gray-400">Priority</td>
-                    <td className="py-4 px-6 text-center text-gray-400">Dedicated</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* FAQ Section */}
-          <div className="mt-12 bg-gray-800 border border-gray-700 rounded-2xl p-8">
-            <h2 className="text-2xl font-bold text-white mb-6">Frequently Asked Questions</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Can I change my plan later?</h3>
-                <p className="text-gray-400">
-                  Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">What payment methods do you accept?</h3>
-                <p className="text-gray-400">
-                  We accept all major credit cards, PayPal, and bank transfers for team plans.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Is there a free trial?</h3>
-                <p className="text-gray-400">
-                  Yes, all paid plans come with a 14-day free trial. No credit card required.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2">Can I cancel anytime?</h3>
-                <p className="text-gray-400">
-                  Absolutely! You can cancel your subscription at any time with no penalties.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
+
+      <UpgradeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 }
+
+export default Subscription;

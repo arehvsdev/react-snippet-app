@@ -9,6 +9,7 @@ import {
   getDashboardSnippetLanguages, 
   getDashboardWeeklyActivity 
 } from '../../services/adminDashboardService';
+import { SubscriptionWidget } from '../subscription/SubscriptionWidget';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6B7280'];
 
@@ -112,7 +113,12 @@ export function AdminDashboard() {
     <Layout>
       <div className="p-8 bg-gray-900 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-white mb-8">Admin Dashboard</h1>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+            <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+            <div className="w-full sm:w-72">
+              <SubscriptionWidget />
+            </div>
+          </div>
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

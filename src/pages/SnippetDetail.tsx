@@ -214,6 +214,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
   };
 
   const loadComments = async (page: number, append: boolean = false) => {
+    if (!snippet?.id) return;
     try {
       setLoadingComments(true);
       const res = await getComments(snippet.id, { page, limit: 5 });
@@ -237,9 +238,12 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
     setIsLiked(snippet.isLiked || false);
     setLikesCount(snippet.likes);
     setBookmarksCount(snippet.bookmarksCount || 0);
+    setComments([]);
     setCommentPage(1);
-    loadComments(1, false);
-  }, [snippet]);
+    if (snippet?.id) {
+      loadComments(1, false);
+    }
+  }, [snippet.id]);
 
   return (
     <div className="max-w-5xl mx-auto p-6">
