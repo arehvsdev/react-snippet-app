@@ -1,15 +1,19 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Layout } from "./Layout";
 import { Check, X, HelpCircle, ChevronDown, ChevronUp, ShieldCheck, Crown, Loader2 } from "lucide-react";
 import { useAuth } from "../layouts/AuthContext";
-import { UpgradeModal } from "../components/subscription/UpgradeModal";
 import { PlanBadge } from "../components/subscription/PlanBadge";
-import { createOrder, verifyPayment, loadRazorpayScript } from "../services/paymentService";
 import { toast } from "react-hot-toast";
+import { openRazorpayCheckout } from "../services/checkoutService";
 
+/**
+ * Pricing Page Component.
+ * Displays tier features, pricing comparison, FAQ accordion, and triggers Razorpay PRO checkout.
+ */
 export function Pricing() {
   const { user, setPlan, refreshSubscription } = useAuth();
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const navigate = useNavigate();
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [loading, setLoading] = useState(false);
 
@@ -22,88 +26,34 @@ export function Pricing() {
     },
     {
       question: "Is this a real payment?",
-      answer: "No, this is a UI demonstration experience. Clicking 'Upgrade to PRO' creates a test mode order with Razorpay.",
+      answer: "No, this is a test mode experience. Clicking 'Upgrade to PRO' creates a test mode order with Razorpay sandbox.",
     },
     {
-      question: "Can I upgrade or downgrade later?",
-      answer: "Yes, you can switch between FREE and PRO plans seamlessly anytime from the Pricing or Subscription page.",
+      question: "Can I upgrade or view subscription status later?",
+      answer: "Yes, you can check your membership status and payment history anytime from the Subscription page.",
     },
   ];
 
-  // Handles Razorpay order creation, checkout modal popup, and backend payment verification
+  /**
+   * Triggers Razorpay payment checkout workflow.
+   */
   const handleUpgradeToPro = async () => {
     if (isPro || loading) return;
 
     try {
       setLoading(true);
-
-      // 1. Call Create Order API
-      const orderRes = await createOrder("PRO");
-      if (!orderRes || !orderRes.orderId) {
-        throw new Error("Failed to generate Razorpay order ID.");
-      }
-
-      // 2. Dynamically load Razorpay SDK
-      const isScriptLoaded = await loadRazorpayScript();
-
-      if (isScriptLoaded && window.Razorpay) {
-        const options = {
-          key: orderRes.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TMBGgbe3YP0Mek",
-          amount: orderRes.amount,
-          currency: orderRes.currency,
-          name: "Code Snippet Platform",
-          description: "PRO Membership Upgrade",
-          order_id: orderRes.orderId,
-          prefill: {
-            name: user?.fullName || user?.username || "Developer",
-            email: user?.email || "",
-            contact: user?.phoneNumber || "",
-          },
-          theme: {
-            color: "#2563eb",
-          },
-          handler: async (response: any) => {
-            try {
-              // 3. Send orderId, paymentId, signature to backend verify API
-              const verifyRes = await verifyPayment({
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-              });
-
-              if (verifyRes.success) {
-                // Sync live subscription from backend — updates Navbar, Profile, Dashboard
-                await refreshSubscription();
-                toast.success("⭐ Payment Successful! PRO Membership Activated.");
-              } else {
-                toast.error(verifyRes.message || "Payment Failed verification.");
-              }
-            } catch (verifyErr: any) {
-              console.error("Payment verification error:", verifyErr);
-              toast.error(verifyErr.message || "Payment Failed.");
-            } finally {
-              setLoading(false);
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              // Handle cancellation
-              setLoading(false);
-              toast.error("Payment Failed or Cancelled.");
-            },
-          },
-        };
-
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      } else {
-        // Fallback UI test modal if script fails to load in sandbox environment
-        setIsModalOpen(true);
-        setLoading(false);
-      }
-    } catch (err: any) {
-      // Handle failure gracefully
-      toast.error(err.message || "Payment order creation failed.");
+      await openRazorpayCheckout({
+        user,
+        refreshSubscription,
+        onSuccess() {
+          toast.success("🎉 PRO Membership Activated");
+          navigate("/subscription");
+        },
+        onFailure(error) {
+          console.error("Upgrade error:", error);
+        },
+      });
+    } finally {
       setLoading(false);
     }
   };
@@ -143,15 +93,15 @@ export function Pricing() {
                 <ul className="space-y-3 text-sm text-gray-300 mb-8 border-t border-gray-700/60 pt-6">
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span>Up to 3 Snippets</span>
+                    <span>Up to 10 Snippets</span>
                   </li>
                   <li className="flex items-center gap-3 text-gray-500">
                     <X className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                    <span>No Private Snippets</span>
+                    <span>Public Snippets Only</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span>Up to 3 Bookmarks</span>
+                    <span>Community Bookmarks</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
@@ -202,7 +152,7 @@ export function Pricing() {
                 <ul className="space-y-3 text-sm text-gray-200 mb-8 border-t border-gray-700/60 pt-6">
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span className="font-semibold text-white">Unlimited Private & Public Snippets</span>
+                    <span className="font-semibold text-white">Unlimited Private &amp; Public Snippets</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
@@ -210,7 +160,7 @@ export function Pricing() {
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span>Premium Badge</span>
+                    <span>Gold PRO Badge</span>
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
@@ -218,7 +168,7 @@ export function Pricing() {
                   </li>
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                    <span>Priority Support (UI Only)</span>
+                    <span>Priority Support</span>
                   </li>
                 </ul>
               </div>
@@ -287,9 +237,6 @@ export function Pricing() {
           </div>
         </div>
       </div>
-
-      {/* Fallback Upgrade Modal */}
-      <UpgradeModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </Layout>
   );
 }

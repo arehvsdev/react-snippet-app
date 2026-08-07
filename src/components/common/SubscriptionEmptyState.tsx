@@ -1,14 +1,27 @@
 import React from "react";
 import { Sparkles, Crown, Bookmark, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../layouts/AuthContext";
 
 interface EmptyStateProps {
   type: "subscription" | "pricing" | "bookmarks";
   onAction?: () => void;
 }
 
+/**
+ * Subscription Empty State Banner Component.
+ * Displays upgrade options for FREE users, and automatically hides upgrade banners for PRO members.
+ */
 export const SubscriptionEmptyState: React.FC<EmptyStateProps> = ({ type, onAction }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const isPro = user?.plan === "PRO";
+
+  // Hide upgrade banner completely for PRO plan members
+  if (isPro && type === "bookmarks") {
+    return null;
+  }
 
   if (type === "subscription") {
     return (
@@ -20,12 +33,14 @@ export const SubscriptionEmptyState: React.FC<EmptyStateProps> = ({ type, onActi
           <h3 className="text-lg font-bold text-white">No Subscription Found</h3>
           <p className="text-xs text-gray-400 mt-1">You are currently on the Free Developer tier.</p>
         </div>
-        <button
-          onClick={onAction || (() => navigate("/pricing"))}
-          className="py-2.5 px-5 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-xs inline-flex items-center gap-1.5 shadow-md"
-        >
-          <Sparkles className="w-3.5 h-3.5 fill-current" /> Explore Plans
-        </button>
+        {!isPro && (
+          <button
+            onClick={onAction || (() => navigate("/pricing"))}
+            className="py-2.5 px-5 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-xs inline-flex items-center gap-1.5 shadow-md cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5 fill-current" /> Explore Plans
+          </button>
+        )}
       </div>
     );
   }
@@ -44,7 +59,7 @@ export const SubscriptionEmptyState: React.FC<EmptyStateProps> = ({ type, onActi
     );
   }
 
-  // Bookmarks empty state upgrade notice
+  // Bookmarks empty state upgrade notice for FREE users
   return (
     <div className="bg-gradient-to-r from-gray-800 via-gray-800 to-gray-900 border border-amber-500/30 rounded-2xl p-6 text-center space-y-3 my-6">
       <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
@@ -58,9 +73,9 @@ export const SubscriptionEmptyState: React.FC<EmptyStateProps> = ({ type, onActi
       </div>
       <button
         onClick={onAction || (() => navigate("/pricing"))}
-        className="py-2 px-4 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-xs inline-flex items-center gap-1.5 shadow-md"
+        className="py-2 px-4 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-xs inline-flex items-center gap-1.5 shadow-md cursor-pointer"
       >
-        <Sparkles className="w-3.5 h-3.5 fill-current" /> Upgrade to PRO (UI Placeholder)
+        <Sparkles className="w-3.5 h-3.5 fill-current" /> Upgrade to PRO
       </button>
     </div>
   );

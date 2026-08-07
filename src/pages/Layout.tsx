@@ -41,7 +41,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <div
-              onClick={() => navigate('/')}
+              onClick={() => navigate(user ? '/snippet-feed' : '/')}
               className="flex items-center gap-2 cursor-pointer group"
             >
               <div className="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2 rounded-xl shadow-md group-hover:scale-105 transition-transform">
@@ -164,7 +164,16 @@ export function Layout({ children }: LayoutProps) {
                 aria-label="View user profile"
               >
                 <img
-                  src={user?.avatar ? (user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_BASE_URL}${user.avatar}`) : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`}
+                  src={
+                    (() => {
+                      const av = user?.avatar;
+                      const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
+                      if (str && typeof str === 'string' && str.trim()) {
+                        return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
+                      }
+                      return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`;
+                    })()
+                  }
                   alt={user?.fullName || 'User'}
                   className="w-8 h-8 rounded-lg object-cover border border-gray-600"
                 />

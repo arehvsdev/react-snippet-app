@@ -1,10 +1,11 @@
 /**
  * Centralized Application Routes Component
- * Defines public, user-protected, and admin-protected route configurations with lazy loading and suspense fallback.
+ * Defines public, user-protected, PRO-protected, and admin-protected route configurations with lazy loading.
  */
 import { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
+import { ProRoute } from "./ProRoute";
 import { AdminRoute } from "./AdminRoute";
 import { NormalUserRoute } from "./NormalUserRoute";
 import { Loader2 } from "lucide-react";
@@ -23,23 +24,25 @@ const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m =>
 const ManageCategories = lazy(() => import("../components/admin/ManageCategories").then(m => ({ default: m.ManageCategories })));
 const ManageUsers = lazy(() => import("../components/admin/ManageUsers").then(m => ({ default: m.ManageUsers })));
 
-// A simple 404 Not Found page component
+// 404 Not Found fallback component
 const NotFound = () => (
-  <div className="flex h-screen items-center justify-center bg-gray-900">
-    <h1 className="text-3xl text-white font-bold">404 - Page Not Found</h1>
+  <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+    <h1 className="text-3xl font-bold">404 - Page Not Found</h1>
   </div>
 );
 
 const AppRoutes = () => {
   return (
-    <Suspense fallback={
-      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-400 text-sm font-medium">Loading layout content...</p>
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400 text-sm font-medium">Loading layout content...</p>
+          </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
@@ -53,10 +56,17 @@ const AppRoutes = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/create" element={<CreateSnippet />} />
           <Route path="/edit/:id" element={<CreateSnippet />} />
+          
           <Route element={<NormalUserRoute />}>
             <Route path="/subscription" element={<Subscription />} />
           </Route>
+          
           <Route path="/bookmarks" element={<Bookmarks />} />
+
+          {/* PRO Subscription Protected Routes */}
+          <Route element={<ProRoute />}>
+            <Route path="/pro-snippets" element={<SnippetFeed />} />
+          </Route>
 
           {/* Admin-only routes */}
           <Route element={<AdminRoute />}>
@@ -67,9 +77,10 @@ const AppRoutes = () => {
             <Route path="/admin/users" element={<ManageUsers />} />
           </Route>
 
-          {/* Redirects for old/alternative paths for consistency */}
+          {/* Redirects for alternative paths */}
           <Route path="/create-snippet" element={<Navigate to="/create" replace />} />
         </Route>
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

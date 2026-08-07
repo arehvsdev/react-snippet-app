@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { X, Sparkles, Check, Crown, Loader2 } from "lucide-react";
 import { useAuth } from "../../layouts/AuthContext";
-import { createOrder, verifyPayment, loadRazorpayScript } from "../../services/paymentService";
 import { toast } from "react-hot-toast";
+import { openRazorpayCheckout } from "../../services/checkoutService";
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -10,86 +10,48 @@ interface UpgradeModalProps {
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {
-  const { user, setPlan, refreshSubscription } = useAuth();
+  const { user, refreshSubscription } = useAuth();
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
   const handleUpgrade = async () => {
-    if (loading) return; // Prevent duplicate requests
+
+    if (loading) return;
 
     try {
+
       setLoading(true);
 
-      // 1. Create order on backend via paymentService
-      const orderRes = await createOrder("PRO");
-      if (!orderRes || !orderRes.orderId) {
-        throw new Error("Failed to generate order ID");
-      }
+      await openRazorpayCheckout({
 
-      // 2. Dynamically load Razorpay SDK script
-      const isScriptLoaded = await loadRazorpayScript();
+        user,
 
-      if (isScriptLoaded && window.Razorpay) {
-        const options = {
-          key: orderRes.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_TMBGgbe3YP0Mek",
-          amount: orderRes.amount,
-          currency: orderRes.currency,
-          name: "Code Snippet Platform",
-          description: "PRO Membership Upgrade",
-          order_id: orderRes.orderId,
-          prefill: {
-            name: user?.fullName || user?.username || "Developer",
-            email: user?.email || "",
-            contact: user?.phoneNumber || "",
-          },
-          theme: {
-            color: "#3b82f6",
-          },
-          handler: async (response: any) => {
-            try {
-              // 3. Verify Razorpay signature on backend
-              const verifyRes = await verifyPayment({
-                orderId: response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-              });
+        refreshSubscription,
 
-              if (verifyRes.success) {
-                // 4. Sync subscription state from backend across Navbar, Dashboard, Profile
-                await refreshSubscription();
-                toast.success("⭐ Payment Verified! You are now a PRO Member!");
-                onClose();
-              } else {
-                toast.error(verifyRes.message || "Payment verification failed.");
-              }
-            } catch (verifyErr: any) {
-              console.error("Payment verification failed:", verifyErr);
-              toast.error(verifyErr.message || "Payment verification failed.");
-            }
-          },
-          modal: {
-            ondismiss: () => {
-              setLoading(false);
-              toast.error("Payment window closed.");
-            },
-          },
-        };
+        onSuccess() {
 
-        const razorpay = new window.Razorpay(options);
-        razorpay.open();
-      } else {
-        // Fallback UI test modal if script fails to load in sandbox
-        setPlan("PRO");
-        toast.success(`⭐ Order ${orderRes.orderId} created! PRO activated (UI Test mode).`);
-        onClose();
-      }
-    } catch (err: any) {
-      console.error("Order creation failed:", err);
-      toast.error(err.message || "Failed to initiate payment. Please try again.");
-    } finally {
-      setLoading(false);
+          toast.success("⭐ Welcome to PRO!");
+
+          onClose();
+
+        },
+
+        onFailure(error) {
+
+          console.error(error);
+
+        }
+
+      });
+
     }
+    finally {
+
+      setLoading(false);
+
+    }
+
   };
 
   const benefits = [

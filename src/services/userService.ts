@@ -37,10 +37,12 @@ export const deleteUser = async (id: string): Promise<any> => {
 };
 
 /**
- * Service to manage User Profile actions using the apiClient helper
+ * Service to manage User Profile actions using the apiClient helper.
+ * Unwraps the user object payload from the API response.
  */
 export const getUserProfile = async (): Promise<any> => {
-  return apiClient.get('/users/profile');
+  const resData = await apiClient.get('/users/profile');
+  return resData.user || resData.data || resData;
 };
 
 export const updateUserProfile = async (data: { 
@@ -59,7 +61,10 @@ export const updateUserProfile = async (data: {
   });
 };
 
-export const updateUserAvatar = async (fileOrFormData: File | FormData): Promise<any> => {
+/**
+ * Uploads user avatar image file and returns the string avatar URL.
+ */
+export const updateUserAvatar = async (fileOrFormData: File | FormData): Promise<string> => {
   let formData: FormData;
   if (fileOrFormData instanceof FormData) {
     formData = fileOrFormData;
@@ -67,7 +72,9 @@ export const updateUserAvatar = async (fileOrFormData: File | FormData): Promise
     formData = new FormData();
     formData.append("avatar", fileOrFormData);
   }
-  return apiClient.upload('/users/avatar', formData);
+  const resData = await apiClient.upload('/users/avatar', formData);
+  const avatarUrl = typeof resData === 'string' ? resData : (resData.avatar || resData.data?.avatar || '');
+  return avatarUrl;
 };
 
 export const changeUserPassword = async (data: { currentPassword?: string; newPassword?: string }): Promise<any> => {

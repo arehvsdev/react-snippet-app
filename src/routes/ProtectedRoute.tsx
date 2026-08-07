@@ -9,8 +9,8 @@ const ProtectedRoute = () => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
-    // Redirect unauthenticated visitors to root/login page
-    return <Navigate to="/" replace />;
+    // Redirect unauthenticated visitors to login page
+    return <Navigate to="/login" replace />;
   }
 
   return <Outlet />;

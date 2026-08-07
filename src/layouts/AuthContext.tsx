@@ -8,6 +8,8 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { getSubscription } from "../services/paymentService";
+import { getMe, type UserProfileResponse } from "../services/authService";
+import { Loader2 } from "lucide-react";
 
 export interface User {
   uid: string;
@@ -25,7 +27,7 @@ export interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void;
+  login: (userData: User & { token?: string }) => void;
   logout: () => void;
   isAuthenticated: boolean;
   updateUser: (userData: User) => void;
@@ -39,19 +41,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
   const navigate = useNavigate();
 
+  /**
+   * Validates stored JWT session token on app startup via GET /api/auth/me.
+   * Does NOT trust localStorage user payload alone.
+   */
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      const parsed = JSON.parse(storedUser);
-      if (!parsed.plan) {
-        parsed.plan = "FREE";
+    const validateSession = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        localStorage.removeItem("user");
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      setUser(parsed);
-    }
+
+      try {
+        const currentUser: UserProfileResponse = await getMe();
+        localStorage.setItem("user", JSON.stringify(currentUser));
+        setUser(currentUser);
+      } catch {
+        // Token is invalid or expired: purge credentials
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    validateSession();
   }, []);
 
+  /**
+   * Authenticates user upon login form submission & persists token.
+   */
   const login = (userData: User & { token?: string }) => {
     const { token, ...userWithoutToken } = userData;
     if (!userWithoutToken.plan) {
@@ -62,12 +89,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     localStorage.setItem("user", JSON.stringify(userWithoutToken));
     setUser(userWithoutToken);
-    navigate("/profile");
+    setTimeout(() => {
+      refreshSubscription();
+    }, 500);
+    navigate("/snippet-feed");
   };
 
+  /**
+   * Signs out the authenticated user and clears localStorage credentials.
+   */
   const logout = () => {
-    localStorage.removeItem("user");
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setUser(null);
     navigate("/");
   };
@@ -92,21 +125,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   /**
-   * Fetches live subscription data from backend and syncs context + localStorage.
-   * Call this after a successful payment to reflect PRO status immediately.
+   * Synchronizes the authenticated user's subscription with the backend.
+   * Dispatches 'subscription-updated' global window event on update.
    */
   const refreshSubscription = useCallback(async () => {
-    if (!localStorage.getItem("token")) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
     try {
       const subscription = await getSubscription();
-      if (!user) return;
-      const updated = { ...user, plan: subscription.plan };
-      localStorage.setItem("user", JSON.stringify(updated));
-      setUser(updated);
+      setUser((previousUser) => {
+        if (!previousUser) return previousUser;
+
+        const updatedUser = {
+          ...previousUser,
+          plan: subscription.plan,
+        };
+
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+
+      // Broadcast subscription update event across components
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("subscription-updated", { detail: subscription }));
+      }
     } catch {
-      // Silently fail — UI keeps its current state
+      // Silently fail — UI preserves current state
     }
-  }, [user]);
+  }, []);
 
   const value = {
     user,
@@ -118,6 +165,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     togglePlan,
     refreshSubscription,
   };
+
+  // Render loading screen while validating session token on startup
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-900 text-white">
+        <div className="text-center space-y-3">
+          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto" />
+          <p className="text-gray-400 text-sm font-medium">Validating session token...</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

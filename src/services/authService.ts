@@ -9,10 +9,22 @@ export interface RegistrationData {
   role: string;
 }
 
+export interface UserProfileResponse {
+  uid: string;
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  createdAt: string;
+  username: string;
+  bio: string;
+  avatar: string;
+  plan: "FREE" | "PRO";
+}
+
 /**
  * Checks if a username is available.
- * @param username - The username to check.
- * @returns boolean indicating if the username is available (true) or taken (false).
  */
 export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
   try {
@@ -25,11 +37,9 @@ export const checkUsernameAvailability = async (username: string): Promise<boole
 };
 
 /**
- * Registers a new user with the MongoDB backend.
- * @param data - The user's registration details.
- * @returns The created user object mockup.
+ * Registers a new user with the backend.
  */
-export const registerUser = async (data: RegistrationData): Promise<any> => {
+export const registerUser = async (data: RegistrationData): Promise<unknown> => {
   const resData = await apiClient.post("/auth/register", {
     name: data.fullName,
     username: data.username.trim().toLowerCase(),
@@ -48,12 +58,9 @@ export const registerUser = async (data: RegistrationData): Promise<any> => {
 };
 
 /**
- * Logs in a user by checking credentials against the MongoDB database.
- * @param email The user's email.
- * @param password The user's password.
- * @returns The user object if login is successful.
+ * Logs in a user by checking credentials against the backend.
  */
-export const loginUser = async (email: string, password: string): Promise<any> => {
+export const loginUser = async (email: string, password: string): Promise<unknown> => {
   const resData = await apiClient.post("/auth/login", { email, password });
 
   const token = resData.token;
@@ -74,13 +81,40 @@ export const loginUser = async (email: string, password: string): Promise<any> =
     username: backendUser.username,
     bio: backendUser.bio || "",
     avatar: backendUser.avatar || "",
+    plan: backendUser.subscription?.plan || "FREE",
     token: token
   };
 };
 
 /**
+ * Validates the stored JWT token with backend via GET /api/auth/me.
+ * Returns normalized User object if token is valid, throws error if 401/expired.
+ */
+export const getMe = async (): Promise<UserProfileResponse> => {
+  const resData = await apiClient.get("/auth/me");
+  const backendUser = resData.user || resData.data;
+
+  if (!backendUser) {
+    throw new Error("Invalid token session.");
+  }
+
+  return {
+    uid: backendUser._id || backendUser.id,
+    id: backendUser._id || backendUser.id,
+    fullName: backendUser.name || backendUser.fullName || "User",
+    email: backendUser.email,
+    phoneNumber: backendUser.phonenumber || backendUser.phoneNumber || "",
+    role: backendUser.role || "developer",
+    createdAt: backendUser.createdAt || new Date().toISOString(),
+    username: backendUser.username || "",
+    bio: backendUser.bio || "",
+    avatar: backendUser.avatar || "",
+    plan: backendUser.subscription?.plan || backendUser.plan || "FREE",
+  };
+};
+
+/**
  * Verifies if an email exists on the backend.
- * @param email - The email to verify.
  */
 export const verifyEmail = async (email: string): Promise<boolean> => {
   await apiClient.post("/auth/verify-email", { email });
@@ -89,8 +123,6 @@ export const verifyEmail = async (email: string): Promise<boolean> => {
 
 /**
  * Resets the password for a registered email.
- * @param email - The user's email.
- * @param password - The new password.
  */
 export const resetPassword = async (email: string, password: string): Promise<boolean> => {
   await apiClient.post("/auth/reset-password", { email, password });

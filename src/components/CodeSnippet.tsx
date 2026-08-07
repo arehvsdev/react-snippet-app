@@ -5,27 +5,34 @@ import toast from 'react-hot-toast';
 
 interface CodeSnippetProps {
   id?: string;
-  title: string;
-  language: string;
-  code: string;
+  title?: string;
+  language?: string;
+  code?: string;
   description?: string;
   tags?: string[];
   visibility?: 'public' | 'private';
+  snippet?: any;
+  showActions?: boolean;
   onVisibilityToggle?: (id: string, newVisibility: 'public' | 'private') => void;
   onEdit?: (id: string) => void;
 }
 
-export const CodeSnippet = memo(function CodeSnippet({
-  id,
-  title,
-  language,
-  code,
-  description,
-  tags,
-  visibility,
-  onVisibilityToggle,
-  onEdit
-}: CodeSnippetProps) {
+/**
+ * Reusable Code Snippet Component.
+ * Supports rendering via individual props or a nested snippet object.
+ */
+export const CodeSnippet = memo(function CodeSnippet(props: CodeSnippetProps) {
+  const s = props.snippet || {};
+  const id = props.id || s.id || s._id;
+  const title = props.title || s.title || "Untitled Snippet";
+  const language = props.language || s.language || "text";
+  const code = props.code || s.code || "";
+  const description = props.description || s.description || "";
+  const tags = props.tags || s.tags || [];
+  const visibility = (props.visibility || s.visibility || "public") as 'public' | 'private';
+  const onVisibilityToggle = props.onVisibilityToggle;
+  const onEdit = props.onEdit;
+
   const [copied, setCopied] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
 
@@ -54,10 +61,10 @@ export const CodeSnippet = memo(function CodeSnippet({
   };
 
   return (
-    <Card className="w-full" sx={{ backgroundColor: 'rgb(31, 41, 55)', borderColor: 'rgb(75, 85, 99)' }}>
+    <Card className="w-full shadow-lg" sx={{ backgroundColor: 'rgb(31, 41, 55)', borderColor: 'rgb(75, 85, 99)' }}>
       <CardHeader
-        title={<span className="text-white">{title}</span>}
-        subheader={<span className="text-gray-400">{description}</span>}
+        title={<span className="text-white font-bold text-lg">{title}</span>}
+        subheader={description ? <span className="text-gray-400 text-sm mt-0.5 block">{description}</span> : undefined}
         action={
           <div className="flex items-center gap-2">
             {visibility && (
@@ -122,10 +129,10 @@ export const CodeSnippet = memo(function CodeSnippet({
               fontWeight: 600
             }}
           />
-          {tags?.map((tag) => (
+          {tags?.map((tag: string) => (
             <Chip
               key={tag}
-              label={tag}
+              label={`#${tag}`}
               size="small"
               sx={{
                 backgroundColor: 'rgba(75, 85, 99, 0.3)',

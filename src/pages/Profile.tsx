@@ -1,15 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Plus, Key, Compass } from 'lucide-react';
+import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Key, Crown, ShieldCheck, CheckCircle2, Code } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/userService';
-import { getSnippets, getUserBookmarks, updateSnippet } from '../services/snippetService';
+import { getSnippets, getUserBookmarks, updateSnippet, getMySnippetStats, type UserSnippetStats } from '../services/snippetService';
 import toast from 'react-hot-toast';
 import { PlanBadge } from '../components/subscription/PlanBadge';
-import { SubscriptionWidget } from '../components/subscription/SubscriptionWidget';
+import { ProBadge } from '../components/subscription/ProBadge';
 
+/**
+ * User Profile & Statistics Component.
+ * Displays user details, avatar upload, password changes, real-time 6-card snippet statistics, and user's snippet collection.
+ */
 export function Profile() {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
@@ -18,6 +22,10 @@ export function Profile() {
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
   
+  // Real User Statistics State
+  const [stats, setStats] = useState<UserSnippetStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState<boolean>(true);
+
   // Bookmarks Pagination States
   const [bookmarkPage, setBookmarkPage] = useState(1);
   const [bookmarkPagination, setBookmarkPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
@@ -39,6 +47,18 @@ export function Profile() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
+
+  const validatePasswordRequirements = (password: string) => {
+    if (!password) return 'New password is required.';
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])[A-Za-z\d@$!%*?&#\.]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      return 'Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#.).';
+    }
+    return '';
+  };
 
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,20 +68,14 @@ export function Profile() {
       newErrors.currentPassword = 'Current password is required.';
     }
 
-    if (!newPassword) {
-      newErrors.newPassword = 'New password is required.';
-    } else if (newPassword.length < 8) {
-      newErrors.newPassword = 'New password must be at least 8 characters long.';
-    } else {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])/;
-      if (!passwordRegex.test(newPassword)) {
-        newErrors.newPassword = 'Password must include uppercase, lowercase, number, and special character (@$!%*?&#.).';
-      }
+    const newPassErr = validatePasswordRequirements(newPassword);
+    if (newPassErr) {
+      newErrors.newPassword = newPassErr;
     }
 
     if (!confirmNewPassword) {
       newErrors.confirmNewPassword = 'Please confirm your new password.';
-    } else if (newPassword && newPassword !== confirmNewPassword) {
+    } else if (newPassword !== confirmNewPassword) {
       newErrors.confirmNewPassword = 'Passwords do not match.';
     }
 
@@ -80,6 +94,9 @@ export function Profile() {
       setNewPassword('');
       setConfirmNewPassword('');
       setPasswordErrors({});
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmNewPassword(false);
     } catch (err: any) {
       const msg = err.message || 'Failed to change password';
       toast.error(msg);
@@ -89,17 +106,25 @@ export function Profile() {
 
   const fetchProfile = async () => {
     try {
-      const profile = await getUserProfile();
-      const nameStr = profile?.fullName || user?.fullName || 'User';
+      const rawProfile = await getUserProfile();
+      const profile = rawProfile?.data || rawProfile?.user || rawProfile;
+      const nameStr = profile?.name || profile?.fullName || user?.fullName || 'User';
       const safeUsername = profile?.username || (typeof nameStr === 'string' ? nameStr.toLowerCase().replace(/\s+/g, '') : 'user');
+      
+      // Extract and format actual user createdAt date string (e.g. "August 2026")
+      const rawCreatedAt = profile?.createdAt || profile?.data?.createdAt || user?.createdAt;
+      const formattedJoinedDate = rawCreatedAt && !isNaN(new Date(rawCreatedAt).getTime())
+        ? new Date(rawCreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+        : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
       const activeUser = {
         name: nameStr,
         email: profile?.email || user?.email || '',
         username: safeUsername,
         bio: profile?.bio || 'Full-stack developer passionate about clean code and open source',
         avatar: profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=3b82f6&color=fff`,
-        joinedDate: profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
-        phoneNumber: profile?.phoneNumber || user?.phoneNumber
+        joinedDate: formattedJoinedDate,
+        phoneNumber: profile?.phonenumber || profile?.phoneNumber || user?.phoneNumber
       };
       setCurrentUserData(activeUser);
       
@@ -115,13 +140,18 @@ export function Profile() {
       if (user) {
         const fallbackName = user.fullName || 'User';
         const fallbackUsername = user.username || (typeof fallbackName === 'string' ? fallbackName.toLowerCase().replace(/\s+/g, '') : 'user');
+        const rawCreatedAt = user.createdAt;
+        const formattedJoinedDate = rawCreatedAt && !isNaN(new Date(rawCreatedAt).getTime())
+          ? new Date(rawCreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+          : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
         setCurrentUserData({
           name: fallbackName,
           email: user.email || '',
           username: fallbackUsername,
           bio: user.bio || 'Full-stack developer passionate about clean code and open source',
           avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=3b82f6&color=fff`,
-          joinedDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+          joinedDate: formattedJoinedDate,
           phoneNumber: user.phoneNumber
         });
       }
@@ -162,7 +192,7 @@ export function Profile() {
         username: updatedProfile.username,
         bio: updatedProfile.bio,
         avatar: updatedProfile.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(updatedProfile.fullName)}&background=3b82f6&color=fff`,
-        joinedDate: updatedProfile.createdAt ? new Date(updatedProfile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'January 2024',
+        joinedDate: updatedProfile.createdAt ? new Date(updatedProfile.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'August 2026',
         phoneNumber: updatedProfile.phoneNumber
       });
 
@@ -193,7 +223,8 @@ export function Profile() {
 
     try {
       toast.loading("Uploading avatar...", { id: "avatar-upload" });
-      const avatarUrl = await updateUserAvatar(file);
+      const resAvatar = await updateUserAvatar(file);
+      const avatarUrl = typeof resAvatar === 'string' ? resAvatar : (resAvatar?.avatar || resAvatar?.url || '');
       
       const updatedUser = {
         ...user,
@@ -214,6 +245,7 @@ export function Profile() {
 
   const userId = user?.id || user?.uid;
 
+  // Load user profile & snippet list
   useEffect(() => {
     if (!userId) {
       navigate('/');
@@ -234,6 +266,25 @@ export function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, navigate]);
 
+  // Load real user statistics cards from backend GET /api/snippets/my/stats
+  useEffect(() => {
+    if (!userId) return;
+    const loadStats = async () => {
+      try {
+        setLoadingStats(true);
+        const data = await getMySnippetStats();
+        setStats(data);
+      } catch (err) {
+        console.error("Failed to load user stats:", err);
+        setStats({ total: 0, public: 0, private: 0, bookmarks: 0 });
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    loadStats();
+  }, [userId]);
+
+  // Load bookmarks with pagination
   useEffect(() => {
     if (!userId) return;
     const loadBookmarks = async () => {
@@ -311,65 +362,103 @@ export function Profile() {
                   <img
                     src={currentUserData.avatar}
                     alt={currentUserData.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-700"
-                  />
-                  <button 
-                    onClick={handleAvatarClick}
-                    className="absolute bottom-0 right-0 bg-gray-700 rounded-full p-2 shadow-lg border border-gray-600 hover:bg-gray-600 transition-colors"
-                    aria-label="Upload avatar"
-                  >
-                    <UserIcon className="w-4 h-4 text-gray-300" />
-                  </button>
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleAvatarChange} 
-                    className="hidden" 
-                    accept="image/*"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-700 shadow-md"
                   />
                 </div>
 
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
-                  <PlanBadge plan={user?.plan || "FREE"} size="sm" />
+                  {user?.plan === 'PRO' ? <ProBadge size="sm" /> : <PlanBadge plan="FREE" size="sm" />}
                 </div>
                 <p className="text-gray-400 mb-1">@{currentUserData.username}</p>
                 <p className="text-sm text-gray-500 mb-4">Joined {currentUserData.joinedDate}</p>
 
                 <p className="text-center text-gray-300 mb-6">{currentUserData.bio}</p>
 
-                <div className="w-full space-y-2 mb-6">
-                  <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                    <span className="text-gray-400">Email</span>
-                    <span className="font-medium text-white">{currentUserData.email}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-700">
-                    <span className="text-gray-400">Snippets</span>
-                    <span className="font-medium text-white">{userSnippets.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2">
-                    <span className="text-gray-400">Bookmarks</span>
-                    <span className="font-medium text-white">{bookmarkedSnippets.length}</span>
+                {/* Email detail row */}
+                <div className="w-full mb-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-700 text-xs sm:text-sm">
+                    <span className="text-gray-400 font-medium">Email</span>
+                    <span className="font-semibold text-white">{currentUserData.email}</span>
                   </div>
                 </div>
 
-                {/* Subscription Card Widget */}
+                {/* Real User Statistics 6-Card Grid */}
                 <div className="w-full mb-6 text-left">
-                  <SubscriptionWidget />
+                  {loadingStats ? (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="h-16 bg-gray-700/40 border border-gray-700/60 rounded-xl animate-pulse" />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {/* Row 1: Current Plan & Payment Status */}
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <Crown className="w-3 h-3 text-amber-400" /> Current Plan
+                        </span>
+                        <div className="flex items-center gap-1 pt-0.5">
+                          {user?.plan === 'PRO' ? <ProBadge size="xs" /> : <PlanBadge plan="FREE" size="sm" />}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3 text-emerald-400" /> Payment Status
+                        </span>
+                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-0.5">
+                          <CheckCircle2 className="w-3 h-3 shrink-0" /> ACTIVE
+                        </p>
+                      </div>
+
+                      {/* Row 2: Snippets Created & Bookmarks */}
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <Code className="w-3 h-3 text-blue-400" /> Snippets Created
+                        </span>
+                        <p className="text-base font-bold text-white pt-0.5">{stats?.total ?? 0}</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <Bookmark className="w-3 h-3 text-purple-400" /> Bookmarks
+                        </span>
+                        <p className="text-base font-bold text-white pt-0.5">{stats?.bookmarks ?? 0}</p>
+                      </div>
+
+                      {/* Row 3: Public Snippets & Private Snippets */}
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <Globe className="w-3 h-3 text-emerald-400" /> Public Snippets
+                        </span>
+                        <p className="text-base font-bold text-white pt-0.5">{stats?.public ?? 0}</p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-amber-400" /> Private Snippets
+                        </span>
+                        <p className="text-xs font-bold text-amber-300 pt-0.5">
+                          {user?.plan === 'PRO' ? (stats?.private ?? 0) : 'PRO Only'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="w-full space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <button 
                       onClick={handleOpenEditModal}
-                      className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-3 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium text-sm"
+                      className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-3 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium text-sm cursor-pointer"
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       <span>Edit Profile</span>
                     </button>
                     <button
                       onClick={() => setIsPasswordModalOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg transition-colors font-medium border border-gray-600 text-sm"
+                      className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg transition-colors font-medium border border-gray-600 text-sm cursor-pointer"
                     >
                       <Key className="w-4 h-4 shrink-0" />
                       <span>Change Password</span>
@@ -377,7 +466,7 @@ export function Profile() {
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium"
+                    className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer"
                   >
                     <LogOut className="w-4 h-4" />
                     Logout
@@ -409,165 +498,89 @@ export function Profile() {
                         : 'text-gray-400 hover:text-white'
                       }`}
                   >
-                    Bookmarks ({bookmarkedSnippets.length})
+                    Bookmarks ({bookmarkPagination.totalItems || bookmarkedSnippets.length})
                   </button>
                 </div>
               </div>
             )}
 
             {/* My Snippets Tab */}
-            {activeTab === 'my-snippets' && (
-              <div className="space-y-8">
-                {/* Public Snippets */}
-                {publicSnippets.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Globe className="w-5 h-5 text-green-400" />
-                      <h3 className="text-xl font-bold text-white">
-                        Public Snippets ({publicSnippets.length})
-                      </h3>
-                    </div>
-                    <div className="space-y-4">
-                      {publicSnippets.map((snippet) => (
-                        <CodeSnippet
-                          key={snippet.id}
-                          id={snippet.id}
-                          title={snippet.title}
-                          language={snippet.language}
-                          code={snippet.code}
-                          description={snippet.description}
-                          tags={snippet.tags}
-                          visibility={snippet.visibility}
-                          onVisibilityToggle={handleVisibilityToggle}
-                          onEdit={handleEdit}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+            {(activeTab === 'my-snippets' || bookmarkedSnippets.length === 0) && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">My Snippets</h3>
+                  <button
+                    onClick={() => navigate('/create-snippet')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center gap-2 cursor-pointer"
+                  >
+                    Create Snippet
+                  </button>
+                </div>
 
-                {/* Private Snippets */}
-                {privateSnippets.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Lock className="w-5 h-5 text-gray-400" />
-                      <h3 className="text-xl font-bold text-white">
-                        Private Snippets ({privateSnippets.length})
-                      </h3>
-                    </div>
-                    <div className="space-y-4">
-                      {privateSnippets.map((snippet) => (
-                        <CodeSnippet
-                          key={snippet.id}
-                          id={snippet.id}
-                          title={snippet.title}
-                          language={snippet.language}
-                          code={snippet.code}
-                          description={snippet.description}
-                          tags={snippet.tags}
-                          visibility={snippet.visibility}
-                          onVisibilityToggle={handleVisibilityToggle}
-                          onEdit={handleEdit}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {userSnippets.length === 0 && (
-                  <div className="text-center py-16 bg-gray-800/40 rounded-xl border border-gray-700/60 p-8 flex flex-col items-center justify-center backdrop-blur-sm max-w-md mx-auto animate-fade-in">
-                    <div className="bg-blue-600/10 p-4 rounded-full mb-4 border border-blue-500/20">
-                      <Globe className="w-8 h-8 text-blue-400" />
-                    </div>
-                    <h4 className="text-xl font-bold text-white mb-2">No snippets yet</h4>
-                    <p className="text-gray-400 text-sm mb-6 text-center leading-relaxed">
-                      Get started by creating your first snippet. Share it with the world or keep it private.
-                    </p>
+                {userSnippets.length === 0 ? (
+                  <div className="bg-gray-800 rounded-lg border border-gray-700 p-8 text-center">
+                    <p className="text-gray-400 mb-4">You haven't created any snippets yet.</p>
                     <button
-                      onClick={() => navigate('/create')}
-                      className="flex items-center gap-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white px-6 py-2.5 rounded-lg transition-colors font-medium shadow-lg hover:shadow-blue-500/15"
+                      onClick={() => navigate('/create-snippet')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium inline-block cursor-pointer"
                     >
-                      <Plus className="w-4 h-4" />
-                      Create First Snippet
+                      Create Your First Snippet
                     </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {userSnippets.map((snippet) => (
+                      <CodeSnippet
+                        key={snippet.id || snippet._id}
+                        id={snippet.id || snippet._id}
+                        title={snippet.title}
+                        language={snippet.language}
+                        code={snippet.code}
+                        description={snippet.description}
+                        tags={snippet.tags}
+                        visibility={snippet.visibility}
+                        onEdit={handleEdit}
+                        onVisibilityToggle={handleVisibilityToggle}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
             )}
 
             {/* Bookmarks Tab */}
-            {activeTab === 'bookmarks' && (
-              <div>
-                <div className="flex items-center gap-2 mb-4">
-                  <Bookmark className="w-5 h-5 text-blue-400" />
-                  <h3 className="text-xl font-bold text-white">
-                    Bookmarked Snippets ({bookmarkPagination.totalItems || bookmarkedSnippets.length})
-                  </h3>
+            {activeTab === 'bookmarks' && bookmarkedSnippets.length > 0 && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-white">Bookmarked Snippets</h3>
+                  <span className="text-sm text-gray-400">
+                    Showing page {bookmarkPagination.currentPage} of {bookmarkPagination.totalPages}
+                  </span>
                 </div>
 
                 {loadingBookmarks ? (
-                  <div className="flex justify-center items-center py-20" role="status" aria-busy="true">
-                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
-                    <span className="sr-only">Loading bookmarked snippets...</span>
-                  </div>
-                ) : bookmarkedSnippets.length > 0 ? (
                   <div className="space-y-4">
-                    {bookmarkedSnippets.map((snippet) => {
-                      const isOwner = user && snippet.author?.username === user.username;
-                      return (
-                        <CodeSnippet
-                          key={snippet.id}
-                          id={snippet.id}
-                          title={snippet.title}
-                          language={snippet.language}
-                          code={snippet.code}
-                          description={snippet.description}
-                          tags={snippet.tags}
-                          onEdit={isOwner ? handleEdit : undefined}
-                        />
-                      );
-                    })}
+                    {[1, 2].map((n) => (
+                      <div key={n} className="bg-gray-800 rounded-lg p-6 animate-pulse border border-gray-700">
+                        <div className="h-6 bg-gray-700 rounded w-1/3 mb-4"></div>
+                        <div className="h-20 bg-gray-700 rounded mb-4"></div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <div className="text-center py-16 bg-gray-800/40 border border-gray-700/50 rounded-2xl p-8">
-                    <Bookmark className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-300 mb-2">No bookmarked snippets yet</h3>
-                    <p className="text-gray-400 text-sm max-w-md mx-auto mb-6">
-                      Start bookmarking code snippets from the feed to access your personal collection anytime.
-                    </p>
-                    <button
-                      onClick={() => navigate('/')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm shadow-lg shadow-blue-500/20"
-                    >
-                      <Compass className="w-4 h-4" />
-                      Explore Snippets
-                    </button>
-                  </div>
-                )}
-
-                {/* Pagination Controls */}
-                {!loadingBookmarks && bookmarkPagination.totalPages > 1 && (
-                  <div className="mt-8 flex items-center justify-between bg-gray-800 border border-gray-700 rounded-lg p-4">
-                    <button
-                      disabled={bookmarkPage <= 1}
-                      onClick={() => setBookmarkPage(prev => Math.max(1, prev - 1))}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
-                      aria-label="Previous page of bookmarks"
-                    >
-                      Previous
-                    </button>
-                    <span className="text-sm font-semibold text-gray-400">
-                      Page {bookmarkPage} of {bookmarkPagination.totalPages} (Total: {bookmarkPagination.totalItems})
-                    </span>
-                    <button
-                      disabled={bookmarkPage >= bookmarkPagination.totalPages}
-                      onClick={() => setBookmarkPage(prev => Math.min(bookmarkPagination.totalPages, prev + 1))}
-                      className="px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white rounded-lg text-sm font-semibold transition-all"
-                      aria-label="Next page of bookmarks"
-                    >
-                      Next
-                    </button>
+                  <div className="space-y-4">
+                    {bookmarkedSnippets.map((snippet) => (
+                      <CodeSnippet
+                        key={snippet.id || snippet._id}
+                        id={snippet.id || snippet._id}
+                        title={snippet.title}
+                        language={snippet.language}
+                        code={snippet.code}
+                        description={snippet.description}
+                        tags={snippet.tags}
+                        visibility={snippet.visibility}
+                      />
+                    ))}
                   </div>
                 )}
               </div>
@@ -575,198 +588,8 @@ export function Profile() {
           </div>
         </div>
       </div>
-
-      {/* Edit Profile Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-zoom-in">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-              <h3 className="text-xl font-bold text-white">Edit Profile</h3>
-              <button 
-                onClick={() => setIsEditModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-lg"
-                aria-label="Close modal"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Full Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={editFullName}
-                  onChange={(e) => setEditFullName(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  placeholder="e.g. John Doe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Username (Handle) <span className="text-xs text-gray-500">(Cannot be changed)</span>
-                </label>
-                <input
-                  type="text"
-                  disabled
-                  value={editUsername}
-                  className="w-full px-4 py-2 bg-gray-950 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed outline-none transition"
-                  placeholder="e.g. johndoe"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  value={editPhoneNumber}
-                  onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  placeholder="e.g. (123) 456-7890"
-                />
-              </div>
-
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Short Bio
-                </label>
-                <textarea
-                  rows={3}
-                  value={editBio}
-                  onChange={(e) => setEditBio(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition resize-none"
-                  placeholder="Tell us about yourself..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {/* Change Password Modal */}
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-gray-800 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Key className="w-5 h-5 text-blue-400" />
-                Change Password
-              </h3>
-              <button 
-                onClick={() => setIsPasswordModalOpen(false)}
-                className="text-gray-400 hover:text-white transition-colors text-lg"
-                aria-label="Close password modal"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={handleSavePassword} className="p-6 space-y-4">
-              {passwordErrors.general && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-400">
-                  {passwordErrors.general}
-                </div>
-              )}
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Current Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => {
-                    setCurrentPassword(e.target.value);
-                    setPasswordErrors(prev => ({ ...prev, currentPassword: '' }));
-                  }}
-                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.currentPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
-                  placeholder="••••••••"
-                />
-                {passwordErrors.currentPassword && (
-                  <p className="text-xs text-red-400 mt-1">{passwordErrors.currentPassword}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  New Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    setPasswordErrors(prev => ({ ...prev, newPassword: '' }));
-                  }}
-                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.newPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
-                  placeholder="••••••••"
-                />
-                {passwordErrors.newPassword ? (
-                  <p className="text-xs text-red-400 mt-1">{passwordErrors.newPassword}</p>
-                ) : (
-                  <p className="text-xs text-gray-400 mt-1">At least 8 chars with uppercase, lowercase, number & special char.</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Confirm New Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={confirmNewPassword}
-                  onChange={(e) => {
-                    setConfirmNewPassword(e.target.value);
-                    setPasswordErrors(prev => ({ ...prev, confirmNewPassword: '' }));
-                  }}
-                  className={`w-full px-4 py-2 bg-gray-900 border ${passwordErrors.confirmNewPassword ? 'border-red-500' : 'border-gray-600'} rounded-lg text-white focus:ring-2 focus:ring-blue-500 outline-none transition`}
-                  placeholder="••••••••"
-                />
-                {passwordErrors.confirmNewPassword && (
-                  <p className="text-xs text-red-400 mt-1">{passwordErrors.confirmNewPassword}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
-                <button
-                  type="button"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-4 py-2 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white font-medium transition-colors"
-                >
-                  Update Password
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </Layout>
   );
 }
+
+export default Profile;

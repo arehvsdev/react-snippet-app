@@ -10,6 +10,13 @@ export interface SnippetData {
   visibility?: 'public' | 'private';
 }
 
+export interface UserSnippetStats {
+  total: number;
+  public: number;
+  private: number;
+  bookmarks: number;
+}
+
 const normalizeSnippet = (s: any) => {
   const authorName = s.createdBy?.name || "Unknown User";
   const authorAvatar = s.createdBy?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(authorName)}&background=3b82f6&color=fff`;
@@ -85,6 +92,14 @@ export const getSnippets = async (filters?: {
 };
 
 /**
+ * Fetches user snippet statistics (total, public, private, bookmarks) from GET /snippets/my/stats.
+ */
+export const getMySnippetStats = async (): Promise<UserSnippetStats> => {
+  const response = await apiClient.get('/snippets/my/stats');
+  return response.data || { total: 0, public: 0, private: 0, bookmarks: 0 };
+};
+
+/**
  * Fetches a single snippet by ID.
  */
 export const getSnippetById = async (id: string): Promise<any> => {
@@ -94,7 +109,7 @@ export const getSnippetById = async (id: string): Promise<any> => {
 };
 
 /**
- * Saves a new snippet to the MongoDB database.
+ * Saves a new snippet to the database.
  */
 export const createSnippet = async (data: SnippetData): Promise<any> => {
   const resData = await apiClient.post('/snippets', {
@@ -255,7 +270,7 @@ export const getLanguages = async (filters?: { active?: boolean }): Promise<any[
 /**
  * Creates a new language. (Admin only)
  */
-export const createLanguage = async (data: { name: string; icon: string; isActive?: boolean }): Promise<any> => {
+export const createLanguage = async (data: { name: string; icon?: string }): Promise<any> => {
   const resData = await apiClient.post('/languages', data);
   return resData.language || resData.data;
 };
@@ -263,7 +278,7 @@ export const createLanguage = async (data: { name: string; icon: string; isActiv
 /**
  * Updates an existing language. (Admin only)
  */
-export const updateLanguage = async (id: string, data: { name?: string; icon?: string; isActive?: boolean }): Promise<any> => {
+export const updateLanguage = async (id: string, data: { name?: string; icon?: string; active?: boolean }): Promise<any> => {
   const resData = await apiClient.put(`/languages/${id}`, data);
   return resData.language || resData.data;
 };
@@ -276,7 +291,7 @@ export const deleteLanguage = async (id: string): Promise<any> => {
 };
 
 /**
- * Fetches all tags.
+ * Fetches tags with optional search filter.
  */
 export const getTags = async (filters?: { active?: boolean; search?: string }): Promise<any[]> => {
   const queryParams = new URLSearchParams();
@@ -293,46 +308,23 @@ export const getTags = async (filters?: { active?: boolean; search?: string }): 
 };
 
 /**
- * Creates a new tag. (Admin only)
- */
-export const createTag = async (data: { name: string; color?: string; isActive?: boolean }): Promise<any> => {
-  const resData = await apiClient.post('/tags', data);
-  return resData.tag || resData.data;
-};
-
-/**
- * Updates an existing tag. (Admin only)
- */
-export const updateTag = async (id: string, data: { name?: string; color?: string; isActive?: boolean }): Promise<any> => {
-  const resData = await apiClient.put(`/tags/${id}`, data);
-  return resData.tag || resData.data;
-};
-
-/**
- * Deletes a tag. (Admin only)
- */
-export const deleteTag = async (id: string): Promise<any> => {
-  return apiClient.delete(`/tags/${id}`);
-};
-
-/**
- * Toggles a snippet like state.
+ * Toggles a snippet like.
  */
 export const toggleSnippetLikeInDB = async (snippetId: string): Promise<{ liked: boolean; likes: number }> => {
   const resData = await apiClient.post(`/snippets/${snippetId}/like`);
   return {
     liked: resData.liked,
-    likes: resData.likes
+    likes: resData.likes || 0
   };
 };
 
 /**
- * Toggles a comment like state.
+ * Toggles a comment like.
  */
 export const toggleCommentLikeInDB = async (commentId: string): Promise<{ liked: boolean; likes: number }> => {
   const resData = await apiClient.post(`/snippets/comments/${commentId}/like`);
   return {
     liked: resData.liked,
-    likes: resData.likes
+    likes: resData.likes || 0
   };
 };

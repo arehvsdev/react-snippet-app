@@ -1,35 +1,14 @@
 import { apiClient } from "./apiClient";
 
+interface RazorpayInstance {
+  open: () => void;
+  on: (event: string, callback: (response: unknown) => void) => void;
+}
+
 declare global {
   interface Window {
-    Razorpay?: any;
+    Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
   }
-}
-
-export interface CreateOrderResponse {
-  success: boolean;
-  orderId: string;
-  amount: number;
-  currency: string;
-  keyId: string;
-  data?: any;
-}
-
-export interface VerifyPaymentPayload {
-  orderId: string;
-  paymentId: string;
-  signature: string;
-}
-
-export interface VerifyPaymentResponse {
-  success: boolean;
-  message?: string;
-  data?: any;
-  subscription?: {
-    plan: string;
-    status: string;
-    paymentId: string;
-  };
 }
 
 export interface SubscriptionData {
@@ -41,7 +20,7 @@ export interface SubscriptionData {
 
 export interface PaymentRecord {
   _id: string;
-  plan: string;
+  plan: "FREE" | "PRO" | string;
   amount: number;
   currency: string;
   orderId: string;
@@ -51,20 +30,23 @@ export interface PaymentRecord {
   createdAt: string;
 }
 
+export interface PaymentHistoryResponse {
+  payments: PaymentRecord[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
 /**
- * Dynamically loads the Razorpay checkout.js script into the DOM.
+ * Dynamically loads Razorpay checkout script into the page.
  */
 export const loadRazorpayScript = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
       resolve(true);
-      return;
-    }
-
-    const existingScript = document.getElementById("razorpay-checkout-script");
-    if (existingScript) {
-      existingScript.addEventListener("load", () => resolve(true));
-      existingScript.addEventListener("error", () => resolve(false));
       return;
     }
 
@@ -78,45 +60,51 @@ export const loadRazorpayScript = (): Promise<boolean> => {
 };
 
 /**
- * Fetches the authenticated user's current subscription from the backend.
+ * Fetches authenticated user's subscription details via GET /subscription.
  */
 export const getSubscription = async (): Promise<SubscriptionData> => {
-  const res = await apiClient.get("/subscription");
-  return res.data?.subscription || { plan: "FREE", status: "ACTIVE", paymentId: null, paymentDate: null };
+  const resData = await apiClient.get("/subscription");
+  const subData = resData.data?.subscription || resData.data || resData.subscription || resData;
+  return subData;
 };
 
 /**
- * Fetches paginated payment transaction history for the authenticated user.
+ * Fetches authenticated user's payment history via GET /payment/history.
  */
-export const getPaymentHistory = async (page = 1, limit = 10): Promise<{ payments: PaymentRecord[]; pagination: any }> => {
-  const res = await apiClient.get(`/payment/history?page=${page}&limit=${limit}`);
-  return { payments: res.data || [], pagination: res.pagination || {} };
+export const getPaymentHistory = async (
+  page = 1,
+  limit = 10
+): Promise<PaymentHistoryResponse> => {
+  const resData = await apiClient.get(
+    `/payment/history?page=${page}&limit=${limit}`
+  );
+  return {
+    payments: resData.data || resData.payments || [],
+    pagination: resData.pagination || {
+      total: 0,
+      page,
+      limit,
+      pages: 1,
+    },
+  };
 };
 
 /**
- * Calls backend API to create a Razorpay order.
+ * Creates a Razorpay order via POST /payment/create-order.
  */
-export const createOrder = async (plan: string = "PRO"): Promise<CreateOrderResponse> => {
+export const createOrder = async (plan: string = "PRO") => {
   const resData = await apiClient.post("/payment/create-order", { plan });
-  return {
-    success: resData.success !== false,
-    orderId: resData.orderId || resData.data?.orderId,
-    amount: resData.amount || resData.data?.amount,
-    currency: resData.currency || resData.data?.currency,
-    keyId: resData.keyId || resData.data?.keyId,
-    data: resData.data,
-  };
+  return resData.data || resData;
 };
 
 /**
- * Calls backend API to verify Razorpay payment signature and activate PRO membership.
+ * Verifies Razorpay payment signature via POST /payment/verify.
  */
-export const verifyPayment = async (payload: VerifyPaymentPayload): Promise<VerifyPaymentResponse> => {
+export const verifyPayment = async (payload: {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}) => {
   const resData = await apiClient.post("/payment/verify", payload);
-  return {
-    success: resData.success !== false,
-    message: resData.message,
-    data: resData.data,
-    subscription: resData.subscription || resData.data?.subscription,
-  };
+  return resData.data || resData;
 };
