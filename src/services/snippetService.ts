@@ -270,16 +270,24 @@ export const getLanguages = async (filters?: { active?: boolean }): Promise<any[
 /**
  * Creates a new language. (Admin only)
  */
-export const createLanguage = async (data: { name: string; icon?: string }): Promise<any> => {
-  const resData = await apiClient.post('/languages', data);
+export const createLanguage = async (data: { name: string; icon?: string; active?: boolean; isActive?: boolean }): Promise<any> => {
+  const payload = {
+    ...data,
+    active: data.active !== undefined ? data.active : data.isActive
+  };
+  const resData = await apiClient.post('/languages', payload);
   return resData.language || resData.data;
 };
 
 /**
  * Updates an existing language. (Admin only)
  */
-export const updateLanguage = async (id: string, data: { name?: string; icon?: string; active?: boolean }): Promise<any> => {
-  const resData = await apiClient.put(`/languages/${id}`, data);
+export const updateLanguage = async (id: string, data: { name?: string; icon?: string; active?: boolean; isActive?: boolean }): Promise<any> => {
+  const payload = {
+    ...data,
+    active: data.active !== undefined ? data.active : data.isActive
+  };
+  const resData = await apiClient.put(`/languages/${id}`, payload);
   return resData.language || resData.data;
 };
 
@@ -305,6 +313,37 @@ export const getTags = async (filters?: { active?: boolean; search?: string }): 
   const endpoint = `/tags${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
   const resData = await apiClient.get(endpoint);
   return resData.tags || resData.data || [];
+};
+
+/**
+ * Creates a new tag. (Admin only)
+ */
+export const createTag = async (data: { name: string; color?: string; active?: boolean; isActive?: boolean }): Promise<any> => {
+  const payload = {
+    ...data,
+    active: data.active !== undefined ? data.active : data.isActive
+  };
+  const resData = await apiClient.post('/tags', payload);
+  return resData.tag || resData.data;
+};
+
+/**
+ * Updates an existing tag. (Admin only)
+ */
+export const updateTag = async (id: string, data: { name?: string; color?: string; active?: boolean; isActive?: boolean }): Promise<any> => {
+  const payload = {
+    ...data,
+    active: data.active !== undefined ? data.active : data.isActive
+  };
+  const resData = await apiClient.put(`/tags/${id}`, payload);
+  return resData.tag || resData.data;
+};
+
+/**
+ * Deletes a tag. (Admin only)
+ */
+export const deleteTag = async (id: string): Promise<any> => {
+  return apiClient.delete(`/tags/${id}`);
 };
 
 /**

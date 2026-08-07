@@ -153,6 +153,28 @@ export function Bookmarks() {
                     </div>
                   </div>
                 ))}
+
+                {pagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-6 border-t border-gray-800">
+                    <button
+                      disabled={page <= 1}
+                      onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                      className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-400">
+                      Page {page} of {pagination.totalPages}
+                    </span>
+                    <button
+                      disabled={page >= pagination.totalPages}
+                      onClick={() => setPage(prev => Math.min(prev + 1, pagination.totalPages))}
+                      className="px-4 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-16 bg-gray-800/40 border border-gray-700/50 rounded-2xl p-8">

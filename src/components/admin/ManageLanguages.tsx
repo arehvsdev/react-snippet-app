@@ -48,7 +48,7 @@ export function ManageLanguages() {
     if (!name.trim() || !icon.trim()) return;
 
     try {
-      await createLanguage({ name, icon, isActive });
+      await createLanguage({ name, icon, active: isActive });
       toast.success('Language created successfully');
       setName('');
       setIcon('');
@@ -65,7 +65,7 @@ export function ManageLanguages() {
     if (!selectedLanguage || !name.trim() || !icon.trim()) return;
 
     try {
-      await updateLanguage(selectedLanguage._id, { name, icon, isActive });
+      await updateLanguage(selectedLanguage._id, { name, icon, active: isActive });
       toast.success('Language updated successfully');
       setName('');
       setIcon('');
@@ -94,7 +94,7 @@ export function ManageLanguages() {
 
   const toggleActive = async (lang: LanguageItem) => {
     try {
-      await updateLanguage(lang._id, { isActive: !lang.isActive });
+      await updateLanguage(lang._id, { active: !lang.isActive });
       toast.success(`Language ${lang.isActive ? 'disabled' : 'enabled'} successfully`);
       loadLanguages();
     } catch (err: any) {

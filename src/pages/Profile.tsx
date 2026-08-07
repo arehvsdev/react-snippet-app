@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
-import { User as UserIcon, Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Key, Crown, ShieldCheck, CheckCircle2, Code } from 'lucide-react';
+import { Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Key, Crown, ShieldCheck, CheckCircle2, Code } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
@@ -224,7 +224,7 @@ export function Profile() {
     try {
       toast.loading("Uploading avatar...", { id: "avatar-upload" });
       const resAvatar = await updateUserAvatar(file);
-      const avatarUrl = typeof resAvatar === 'string' ? resAvatar : (resAvatar?.avatar || resAvatar?.url || '');
+      const avatarUrl = typeof resAvatar === 'string' ? resAvatar : ((resAvatar as any)?.avatar || (resAvatar as any)?.url || '');
       
       const updatedUser = {
         ...user,
@@ -319,9 +319,6 @@ export function Profile() {
     return null;
   }
 
-  const publicSnippets = userSnippets.filter(s => s.visibility === 'public');
-  const privateSnippets = userSnippets.filter(s => s.visibility === 'private');
-
   const handleLogout = () => {
     logout();
   };
@@ -358,17 +355,35 @@ export function Profile() {
           <div className="lg:col-span-1">
             <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-6 sticky top-6">
               <div className="flex flex-col items-center">
-                <div className="relative mb-4">
+                <div className="relative mb-4 group cursor-pointer" onClick={handleAvatarClick}>
                   <img
                     src={currentUserData.avatar}
                     alt={currentUserData.name}
-                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-700 shadow-md"
+                    className="w-32 h-32 rounded-full object-cover border-4 border-gray-700 shadow-md group-hover:opacity-80 transition-opacity"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-xs text-white font-medium">Change Avatar</span>
+                  </div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleAvatarChange}
+                    accept="image/*"
+                    className="hidden"
                   />
                 </div>
 
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
-                  {user?.plan === 'PRO' ? <ProBadge size="sm" /> : <PlanBadge plan="FREE" size="sm" />}
+                  {user?.role?.toLowerCase() === 'admin' ? (
+                    <span className="inline-flex items-center rounded-full bg-blue-900/40 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 text-xs font-semibold">
+                      ADMIN
+                    </span>
+                  ) : user?.plan === 'PRO' ? (
+                    <ProBadge size="sm" />
+                  ) : (
+                    <PlanBadge plan="FREE" size="sm" />
+                  )}
                 </div>
                 <p className="text-gray-400 mb-1">@{currentUserData.username}</p>
                 <p className="text-sm text-gray-500 mb-4">Joined {currentUserData.joinedDate}</p>
@@ -383,34 +398,38 @@ export function Profile() {
                   </div>
                 </div>
 
-                {/* Real User Statistics 6-Card Grid */}
+                {/* Real User Statistics Grid */}
                 <div className="w-full mb-6 text-left">
                   {loadingStats ? (
                     <div className="grid grid-cols-2 gap-2.5">
-                      {[...Array(6)].map((_, i) => (
+                      {[...Array(user?.role?.toLowerCase() === 'admin' ? 4 : 6)].map((_, i) => (
                         <div key={i} className="h-16 bg-gray-700/40 border border-gray-700/60 rounded-xl animate-pulse" />
                       ))}
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2.5">
-                      {/* Row 1: Current Plan & Payment Status */}
-                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
-                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                          <Crown className="w-3 h-3 text-amber-400" /> Current Plan
-                        </span>
-                        <div className="flex items-center gap-1 pt-0.5">
-                          {user?.plan === 'PRO' ? <ProBadge size="xs" /> : <PlanBadge plan="FREE" size="sm" />}
-                        </div>
-                      </div>
+                      {/* Row 1: Current Plan & Payment Status (Non-Admin Users Only) */}
+                      {user?.role?.toLowerCase() !== 'admin' && (
+                        <>
+                          <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                              <Crown className="w-3 h-3 text-amber-400" /> Current Plan
+                            </span>
+                            <div className="flex items-center gap-1 pt-0.5">
+                              {user?.plan === 'PRO' ? <ProBadge size="xs" /> : <PlanBadge plan="FREE" size="sm" />}
+                            </div>
+                          </div>
 
-                      <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
-                        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3 text-emerald-400" /> Payment Status
-                        </span>
-                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-0.5">
-                          <CheckCircle2 className="w-3 h-3 shrink-0" /> ACTIVE
-                        </p>
-                      </div>
+                          <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
+                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3 text-emerald-400" /> Payment Status
+                            </span>
+                            <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-0.5">
+                              <CheckCircle2 className="w-3 h-3 shrink-0" /> ACTIVE
+                            </p>
+                          </div>
+                        </>
+                      )}
 
                       {/* Row 2: Snippets Created & Bookmarks */}
                       <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
@@ -440,7 +459,7 @@ export function Profile() {
                           <Lock className="w-3 h-3 text-amber-400" /> Private Snippets
                         </span>
                         <p className="text-xs font-bold text-amber-300 pt-0.5">
-                          {user?.plan === 'PRO' ? (stats?.private ?? 0) : 'PRO Only'}
+                          {user?.role?.toLowerCase() === 'admin' || user?.plan === 'PRO' ? (stats?.private ?? 0) : 'PRO Only'}
                         </p>
                       </div>
                     </div>
@@ -583,11 +602,218 @@ export function Profile() {
                     ))}
                   </div>
                 )}
+
+                {bookmarkPagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                    <button
+                      disabled={bookmarkPage <= 1}
+                      onClick={() => setBookmarkPage(prev => Math.max(prev - 1, 1))}
+                      className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs text-gray-400">
+                      Page {bookmarkPage} of {bookmarkPagination.totalPages}
+                    </span>
+                    <button
+                      disabled={bookmarkPage >= bookmarkPagination.totalPages}
+                      onClick={() => setBookmarkPage(prev => Math.min(prev + 1, bookmarkPagination.totalPages))}
+                      className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-200 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h3 className="text-lg font-bold text-white">Edit Profile</h3>
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSaveProfile} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editFullName}
+                  onChange={(e) => setEditFullName(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
+                <input
+                  type="text"
+                  required
+                  value={editUsername}
+                  onChange={(e) => setEditUsername(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  value={editPhoneNumber}
+                  onChange={(e) => setEditPhoneNumber(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Bio</label>
+                <textarea
+                  rows={3}
+                  value={editBio}
+                  onChange={(e) => setEditBio(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium text-sm cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm cursor-pointer"
+                >
+                  Save Profile
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Change Password Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl max-w-md w-full overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <h3 className="text-lg font-bold text-white">Change Password</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setPasswordErrors({});
+                }}
+                className="text-gray-400 hover:text-white transition-colors text-lg"
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSavePassword} className="p-6 space-y-4">
+              {passwordErrors.general && (
+                <div className="p-3 bg-red-900/30 border border-red-500/50 rounded-lg text-red-400 text-sm">
+                  {passwordErrors.general}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    {showCurrentPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {passwordErrors.currentPassword && (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.currentPassword}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    {showNewPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {passwordErrors.newPassword && (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.newPassword}</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmNewPassword ? 'text' : 'password'}
+                    required
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+                    className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-white cursor-pointer"
+                  >
+                    {showConfirmNewPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {passwordErrors.confirmNewPassword && (
+                  <p className="text-xs text-red-400 mt-1">{passwordErrors.confirmNewPassword}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPasswordModalOpen(false);
+                    setPasswordErrors({});
+                  }}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors font-medium text-sm cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium text-sm cursor-pointer"
+                >
+                  Change Password
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }

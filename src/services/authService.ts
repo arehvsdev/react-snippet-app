@@ -60,7 +60,7 @@ export const registerUser = async (data: RegistrationData): Promise<unknown> => 
 /**
  * Logs in a user by checking credentials against the backend.
  */
-export const loginUser = async (email: string, password: string): Promise<unknown> => {
+export const loginUser = async (email: string, password: string): Promise<UserProfileResponse & { token?: string }> => {
   const resData = await apiClient.post("/auth/login", { email, password });
 
   const token = resData.token;

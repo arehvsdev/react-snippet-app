@@ -1,13 +1,4 @@
-import { useEffect } from 'react';
-import {
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuItems,
-} from '@headlessui/react';
+import { useState, useEffect, useRef } from 'react';
 import { Menu as MenuIcon, X as XIcon, Bell } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -41,13 +32,16 @@ function classNames(...classes: (string | boolean | undefined | null)[]): string
 
 /**
  * Main application Navigation Bar component.
- * Features Headless UI Disclosure for mobile responsiveness, Headless UI Menu for user profile,
- * Lucide React icons, and dynamic ProBadge rendering with AuthContext integration.
+ * Uses native React state and Tailwind CSS (no external Headless UI library needed).
  */
 export default function Navbar() {
   const { isAuthenticated, logout, user, refreshSubscription } = useAuth();
   const location = useLocation();
   const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Synchronize live subscription status on component mount
   useEffect(() => {
@@ -55,6 +49,23 @@ export default function Navbar() {
       refreshSubscription();
     }
   }, [isAuthenticated, refreshSubscription]);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Close menus on route change
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsProfileMenuOpen(false);
+  }, [location.pathname]);
 
   /**
    * Triggers user sign-out workflow with feedback toast.
@@ -80,7 +91,12 @@ export default function Navbar() {
   const renderNavLinks = (isMobile = false) => {
     if (!isAuthenticated) return null;
 
-    return NAVIGATION_ITEMS.map((item) => {
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
+    const itemsToRender = isAdmin
+      ? NAVIGATION_ITEMS.filter((item) => item.href !== '/subscription')
+      : NAVIGATION_ITEMS;
+
+    return itemsToRender.map((item) => {
       const active = isCurrentPath(item.href);
       const className = classNames(
         active
@@ -91,26 +107,13 @@ export default function Navbar() {
           : 'rounded-md px-3 py-2 text-sm font-medium'
       );
 
-      if (isMobile) {
-        return (
-          <DisclosureButton
-            key={item.name}
-            as={Link}
-            to={item.href}
-            aria-current={active ? 'page' : undefined}
-            className={className}
-          >
-            {item.name}
-          </DisclosureButton>
-        );
-      }
-
       return (
         <Link
           key={item.name}
           to={item.href}
           aria-current={active ? 'page' : undefined}
           className={className}
+          onClick={() => isMobile && setIsMobileMenuOpen(false)}
         >
           {item.name}
         </Link>
@@ -122,20 +125,25 @@ export default function Navbar() {
    * Renders the authenticated user profile menu dropdown.
    */
   const renderProfileDropdown = () => {
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
     const isPro = user?.plan === 'PRO';
     const displayName = user?.fullName || user?.username || 'User';
     const email = user?.email || '';
 
     return (
-      <Menu as="div" className="relative ml-3">
-        <MenuButton className="relative flex items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 cursor-pointer">
+      <div className="relative ml-3" ref={dropdownRef}>
+        <button
+          type="button"
+          onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
+          className="relative flex items-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 cursor-pointer"
+        >
           <span className="sr-only">Open user menu</span>
-          {isPro && <ProBadge size="xs" className="mr-2" />}
+          {isPro && !isAdmin && <ProBadge size="xs" className="mr-2" />}
           <img
             alt={displayName}
             src={
               (() => {
-                const av = user?.avatar;
+                const av = (user as any)?.avatar;
                 const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
                 if (str && typeof str === 'string' && str.trim()) {
                   return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
@@ -145,63 +153,58 @@ export default function Navbar() {
             }
             className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
           />
-        </MenuButton>
+        </button>
 
-        <MenuItems
-          transition
-          className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-gray-900 py-1 outline -outline-offset-1 outline-white/10 transition data-closed:scale-95 data-closed:transform data-closed:opacity-0 data-enter:duration-100 data-enter:ease-out data-leave:duration-75 data-leave:ease-in"
-        >
-          {/* Header containing Name, Email, and Plan Badge */}
-          <div className="border-b border-gray-800 px-4 py-3">
-            <div className="text-sm font-semibold text-white truncate">{displayName}</div>
-            <div className="mt-0.5 text-xs text-gray-400 truncate">{email}</div>
-            <div className="mt-2">
-              {isPro ? (
-                <ProBadge size="xs" />
-              ) : (
-                <span className="inline-flex items-center rounded-full bg-gray-700 px-2 py-0.5 text-xs font-semibold text-gray-300">
-                  FREE
-                </span>
+        {isProfileMenuOpen && (
+          <div className="absolute right-0 z-10 mt-2 w-56 origin-top-right rounded-md bg-gray-900 py-1 outline -outline-offset-1 outline-white/10 shadow-xl">
+            {/* Header containing Name, Email, and Plan Badge */}
+            <div className="border-b border-gray-800 px-4 py-3">
+              <div className="text-sm font-semibold text-white truncate">{displayName}</div>
+              <div className="mt-0.5 text-xs text-gray-400 truncate">{email}</div>
+              {!isAdmin && (
+                <div className="mt-2">
+                  {isPro ? (
+                    <ProBadge size="xs" />
+                  ) : (
+                    <span className="inline-flex items-center rounded-full bg-gray-700 px-2 py-0.5 text-xs font-semibold text-gray-300">
+                      FREE
+                    </span>
+                  )}
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Dropdown Navigation Actions */}
-          <MenuItem>
+            {/* Dropdown Navigation Actions */}
             <Link
               to="/profile"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white"
+              className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
             >
               Profile
             </Link>
-          </MenuItem>
-          <MenuItem>
-            <Link
-              to="/subscription"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white"
-            >
-              Subscription
-            </Link>
-          </MenuItem>
-          <MenuItem>
+            {!isAdmin && (
+              <Link
+                to="/subscription"
+                className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
+              >
+                Subscription
+              </Link>
+            )}
             <Link
               to="/settings"
-              className="block px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white"
+              className="block px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white"
             >
               Settings
             </Link>
-          </MenuItem>
-          <MenuItem>
             <button
               type="button"
               onClick={handleLogout}
-              className="w-full text-left px-4 py-2 text-sm text-gray-300 data-focus:bg-white/5 data-focus:text-white cursor-pointer"
+              className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-white/5 hover:text-white cursor-pointer"
             >
               Logout
             </button>
-          </MenuItem>
-        </MenuItems>
-      </Menu>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -245,19 +248,23 @@ export default function Navbar() {
   };
 
   return (
-    <Disclosure
-      as="nav"
-      className="relative bg-black after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10"
-    >
+    <nav className="relative bg-black after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-white/10">
       <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
         <div className="relative flex h-16 items-center justify-between">
           {/* Mobile Menu Button */}
           <div className="absolute inset-y-0 left-0 flex items-center sm:hidden">
-            <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-white/5 hover:text-white focus:outline-2 focus:-outline-offset-1 focus:outline-indigo-500 cursor-pointer"
+            >
               <span className="sr-only">Open main menu</span>
-              <MenuIcon className="block w-6 h-6 group-data-open:hidden" />
-              <XIcon className="hidden w-6 h-6 group-data-open:block" />
-            </DisclosureButton>
+              {isMobileMenuOpen ? (
+                <XIcon className="block w-6 h-6" />
+              ) : (
+                <MenuIcon className="block w-6 h-6" />
+              )}
+            </button>
           </div>
 
           {/* Platform Branding & Desktop Navigation Links */}
@@ -282,9 +289,11 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Navigation Drawer Panel */}
-      <DisclosurePanel className="sm:hidden">
-        <div className="space-y-1 px-2 pt-2 pb-3">{renderNavLinks(true)}</div>
-      </DisclosurePanel>
-    </Disclosure>
+      {isMobileMenuOpen && (
+        <div className="sm:hidden">
+          <div className="space-y-1 px-2 pt-2 pb-3">{renderNavLinks(true)}</div>
+        </div>
+      )}
+    </nav>
   );
 }

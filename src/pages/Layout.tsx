@@ -166,7 +166,7 @@ export function Layout({ children }: LayoutProps) {
                 <img
                   src={
                     (() => {
-                      const av = user?.avatar;
+                      const av = (user as any)?.avatar;
                       const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
                       if (str && typeof str === 'string' && str.trim()) {
                         return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
@@ -177,13 +177,22 @@ export function Layout({ children }: LayoutProps) {
                   alt={user?.fullName || 'User'}
                   className="w-8 h-8 rounded-lg object-cover border border-gray-600"
                 />
-                <div className="hidden sm:flex flex-col items-start text-left">
-                  <span className="text-xs font-semibold text-white leading-tight max-w-[100px] truncate">{user?.fullName || 'User'}</span>
-                  <PlanBadge plan={user?.plan || 'FREE'} size="sm" showIcon={false} className="mt-0.5 scale-90 origin-left" />
-                </div>
-                <div className="sm:hidden">
-                  <PlanBadge plan={user?.plan || 'FREE'} size="sm" showIcon={false} />
-                </div>
+                {user?.role?.toLowerCase() !== 'admin' ? (
+                  <>
+                    <div className="hidden sm:flex flex-col items-start text-left">
+                      <span className="text-xs font-semibold text-white leading-tight max-w-[100px] truncate">{user?.fullName || 'User'}</span>
+                      <PlanBadge plan={user?.plan || 'FREE'} size="sm" showIcon={false} className="mt-0.5 scale-90 origin-left" />
+                    </div>
+                    <div className="sm:hidden">
+                      <PlanBadge plan={user?.plan || 'FREE'} size="sm" showIcon={false} />
+                    </div>
+                  </>
+                ) : (
+                  <div className="hidden sm:flex flex-col items-start text-left">
+                    <span className="text-xs font-semibold text-white leading-tight max-w-[100px] truncate">{user?.fullName || 'User'}</span>
+                    <span className="text-[10px] font-semibold text-blue-400 uppercase tracking-wider">ADMIN</span>
+                  </div>
+                )}
               </button>
             </div>
           </div>
