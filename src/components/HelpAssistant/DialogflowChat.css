@@ -1,0 +1,34 @@
+/**
+ * -------------------------------------------------------
+ * DialogflowChat.css
+ * -------------------------------------------------------
+ * Custom styles for the Dialogflow Messenger integration.
+ * Renders <df-messenger> as an invisible 1px element off-screen
+ * so that all Dialogflow ES shadow DOM inputs, sessions, and network
+ * events remain fully active while our native React SnipForge UI renders 100%.
+ * -------------------------------------------------------
+ */
+
+df-messenger {
+  position: fixed !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  width: 1px !important;
+  height: 1px !important;
+  opacity: 0.01 !important;
+  pointer-events: none !important;
+  z-index: -9999 !important;
+  overflow: hidden !important;
+}
+
+df-messenger::part(chat-bubble) {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+df-messenger::part(chat-wrapper) {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

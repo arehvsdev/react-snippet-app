@@ -26,8 +26,6 @@ const RegisterForm = () => {
     { value: "recruiter", label: "Recruiter" },
   ];
 
-  // (legacy) single handler removed in favor of `handleFieldChange` below.
-
   // Per-field validation messages
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -44,7 +42,6 @@ const RegisterForm = () => {
         return "";
       case "email":
         if (!value.trim()) return "Email is required.";
-        // simple email check
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value))
           return "Enter a valid email.";
         return "";
@@ -58,7 +55,7 @@ const RegisterForm = () => {
         return "";
       case "password":
         if (!value) return "Password is required.";
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])[A-Za-z\d@$!%*?&#\.]{8,}$/;
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\._-]).{8,}$/;
         if (!passwordRegex.test(value)) {
           return "Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#.).";
         }
@@ -176,28 +173,27 @@ const RegisterForm = () => {
           />
         </div>
 
-        {/* Row 3: Phone Number & Role in same row (2 columns) */}
-        <Input
-          id="phoneNumber"
-          label="Phone Number"
-          type="text"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleFieldChange}
-          placeholder="(123) 456-7890"
-          error={errors.phoneNumber}
-          autoComplete="off"
-        />
+        {/* Row 3: Role & Phone */}
         <Select
           id="role"
           label="Role"
           name="role"
           value={formData.role}
           onChange={handleFieldChange}
-          placeholder="Select your role"
           options={roleOptions}
           required
           error={errors.role}
+        />
+        <Input
+          id="phoneNumber"
+          label="Phone Number"
+          type="tel"
+          name="phoneNumber"
+          value={formData.phoneNumber}
+          onChange={handleFieldChange}
+          placeholder="+1234567890"
+          error={errors.phoneNumber}
+          autoComplete="off"
         />
 
         {/* Row 4: Password (Single Full Line) */}
@@ -231,17 +227,14 @@ const RegisterForm = () => {
             autoComplete="new-password"
           />
         </div>
-
-        {/* Row 5: Register Button */}
-        <div className="sm:col-span-2 mt-1">
-          <button
-            type="submit"
-            className="w-full bg-[#2563eb] text-white py-2.5 px-4 rounded-md hover:bg-[#1d4ed8] transition-colors duration-300 font-bold"
-          >
-            Register
-          </button>
-        </div>
       </div>
+
+      <button
+        type="submit"
+        className="w-full bg-[#2563eb] text-white p-3 rounded-md hover:bg-[#1d4ed8] transition-colors duration-300 font-bold mt-2 cursor-pointer"
+      >
+        Register
+      </button>
     </form>
   );
 };

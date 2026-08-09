@@ -1,6 +1,6 @@
-# Code Snippet App - Beginner's Guide 🚀
+# SnipForge Client - Beginner's Guide 🚀
 
-Welcome to the Code Snippet App! This guide is created to help beginners understand the project structure, React concepts used, and how to run the app.
+Welcome to SnipForge! This guide is created to help beginners understand the project structure, React concepts used, and how to run the app.
 
 ## 🏃 How to Run the App
 

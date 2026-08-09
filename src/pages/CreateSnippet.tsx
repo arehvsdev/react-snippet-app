@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 /**
  * Create and Edit Snippet Component with Frontend Feature Gating:
- * - FREE users: Maximum 10 snippets, Public snippets only.
+ * - FREE users: Maximum 3 snippets, Public snippets only.
  * - PRO users: Unlimited snippets, Public/Private visibility selector.
  */
 export function CreateSnippet() {
@@ -110,7 +110,7 @@ export function CreateSnippet() {
     e.preventDefault();
 
     // 1. FREE Plan Limit Check: Maximum 10 snippets
-    if (!isPro && !isEditMode && userSnippetCount >= 10) {
+    if (!isPro && !isEditMode && userSnippetCount >= 3) {
       toast.error("Upgrade to PRO for unlimited snippets.");
       setIsUpgradeModalOpen(true);
       return;
@@ -195,7 +195,7 @@ export function CreateSnippet() {
                 <div>
                   <span className="font-semibold text-white">Free Tier Limits: </span>
                   <span className="text-gray-300">
-                    Max 10 public snippets ({userSnippetCount}/10 used). <strong className="text-amber-400">Upgrade to PRO for unlimited snippets & private storage</strong>.
+                    Max 3 public snippets ({userSnippetCount}/3 used). <strong className="text-amber-400">Upgrade to PRO for unlimited snippets & private storage</strong>.
                   </span>
                 </div>
               </div>

@@ -1,21 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router';
-import { Settings, LogOut, Lock, Globe, Bookmark, ArrowLeft, Key, Crown, ShieldCheck, CheckCircle2, Code } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Lock, Globe, Bookmark, ArrowLeft, Code } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/userService';
 import { getSnippets, getUserBookmarks, updateSnippet, getMySnippetStats, type UserSnippetStats } from '../services/snippetService';
 import toast from 'react-hot-toast';
-import { PlanBadge } from '../components/subscription/PlanBadge';
-import { ProBadge } from '../components/subscription/ProBadge';
 
 /**
  * User Profile & Statistics Component.
- * Displays user details, avatar upload, password changes, real-time 6-card snippet statistics, and user's snippet collection.
+ * Displays user details, avatar upload, password changes, compact 2×2 snippet statistics, and user's snippet collection.
  */
 export function Profile() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user, logout, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'my-snippets' | 'bookmarks'>('my-snippets');
   const [currentUserData, setCurrentUserData] = useState<any>(null);
@@ -53,11 +52,37 @@ export function Profile() {
 
   const validatePasswordRequirements = (password: string) => {
     if (!password) return 'New password is required.';
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\.])[A-Za-z\d@$!%*?&#\.]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\._-]).{8,}$/;
     if (!passwordRegex.test(password)) {
       return 'Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#.).';
     }
     return '';
+  };
+
+  const validateConfirmPassword = (confirmPass: string, pass: string) => {
+    if (!confirmPass) return 'Please confirm your new password.';
+    if (confirmPass !== pass) return 'Passwords do not match.';
+    return '';
+  };
+
+  const handleNewPasswordChange = (val: string) => {
+    setNewPassword(val);
+    const passErr = validatePasswordRequirements(val);
+    const confirmErr = confirmNewPassword ? validateConfirmPassword(confirmNewPassword, val) : '';
+    setPasswordErrors((prev) => ({
+      ...prev,
+      newPassword: passErr,
+      confirmNewPassword: confirmErr,
+    }));
+  };
+
+  const handleConfirmPasswordChange = (val: string) => {
+    setConfirmNewPassword(val);
+    const confirmErr = validateConfirmPassword(val, newPassword);
+    setPasswordErrors((prev) => ({
+      ...prev,
+      confirmNewPassword: confirmErr,
+    }));
   };
 
   const handleSavePassword = async (e: React.FormEvent) => {
@@ -73,10 +98,9 @@ export function Profile() {
       newErrors.newPassword = newPassErr;
     }
 
-    if (!confirmNewPassword) {
-      newErrors.confirmNewPassword = 'Please confirm your new password.';
-    } else if (newPassword !== confirmNewPassword) {
-      newErrors.confirmNewPassword = 'Passwords do not match.';
+    const confirmErr = validateConfirmPassword(confirmNewPassword, newPassword);
+    if (confirmErr) {
+      newErrors.confirmNewPassword = confirmErr;
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -245,6 +269,19 @@ export function Profile() {
 
   const userId = user?.id || user?.uid;
 
+  // Open edit/password modals when navigated from the header dropdown via query params
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'edit' && currentUserData) {
+      handleOpenEditModal();
+      setSearchParams({}, { replace: true });
+    } else if (action === 'password') {
+      setIsPasswordModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, currentUserData]);
+
   // Load user profile & snippet list
   useEffect(() => {
     if (!userId) {
@@ -373,18 +410,7 @@ export function Profile() {
                   />
                 </div>
 
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="text-2xl font-bold text-white">{currentUserData.name}</h2>
-                  {user?.role?.toLowerCase() === 'admin' ? (
-                    <span className="inline-flex items-center rounded-full bg-blue-900/40 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 text-xs font-semibold">
-                      ADMIN
-                    </span>
-                  ) : user?.plan === 'PRO' ? (
-                    <ProBadge size="sm" />
-                  ) : (
-                    <PlanBadge plan="FREE" size="sm" />
-                  )}
-                </div>
+                <h2 className="text-2xl font-bold text-white mb-1">{currentUserData.name}</h2>
                 <p className="text-gray-400 mb-1">@{currentUserData.username}</p>
                 <p className="text-sm text-gray-500 mb-4">Joined {currentUserData.joinedDate}</p>
 
@@ -398,40 +424,16 @@ export function Profile() {
                   </div>
                 </div>
 
-                {/* Real User Statistics Grid */}
-                <div className="w-full mb-6 text-left">
+                {/* Compact 2×2 Statistics Grid */}
+                <div className="w-full text-left">
                   {loadingStats ? (
                     <div className="grid grid-cols-2 gap-2.5">
-                      {[...Array(user?.role?.toLowerCase() === 'admin' ? 4 : 6)].map((_, i) => (
+                      {[...Array(4)].map((_, i) => (
                         <div key={i} className="h-16 bg-gray-700/40 border border-gray-700/60 rounded-xl animate-pulse" />
                       ))}
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2.5">
-                      {/* Row 1: Current Plan & Payment Status (Non-Admin Users Only) */}
-                      {user?.role?.toLowerCase() !== 'admin' && (
-                        <>
-                          <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
-                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                              <Crown className="w-3 h-3 text-amber-400" /> Current Plan
-                            </span>
-                            <div className="flex items-center gap-1 pt-0.5">
-                              {user?.plan === 'PRO' ? <ProBadge size="xs" /> : <PlanBadge plan="FREE" size="sm" />}
-                            </div>
-                          </div>
-
-                          <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
-                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                              <ShieldCheck className="w-3 h-3 text-emerald-400" /> Payment Status
-                            </span>
-                            <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-0.5">
-                              <CheckCircle2 className="w-3 h-3 shrink-0" /> ACTIVE
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Row 2: Snippets Created & Bookmarks */}
                       <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
                         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                           <Code className="w-3 h-3 text-blue-400" /> Snippets Created
@@ -446,7 +448,6 @@ export function Profile() {
                         <p className="text-base font-bold text-white pt-0.5">{stats?.bookmarks ?? 0}</p>
                       </div>
 
-                      {/* Row 3: Public Snippets & Private Snippets */}
                       <div className="p-3 rounded-xl bg-gray-900/60 border border-gray-700/80 shadow-xs space-y-1">
                         <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                           <Globe className="w-3 h-3 text-emerald-400" /> Public Snippets
@@ -464,32 +465,6 @@ export function Profile() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                <div className="w-full space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={handleOpenEditModal}
-                      className="w-full flex items-center justify-center gap-2 bg-[#2563eb] text-white px-3 py-2 rounded-lg hover:bg-[#1d4ed8] transition-colors font-medium text-sm cursor-pointer"
-                    >
-                      <Settings className="w-4 h-4 shrink-0" />
-                      <span>Edit Profile</span>
-                    </button>
-                    <button
-                      onClick={() => setIsPasswordModalOpen(true)}
-                      className="w-full flex items-center justify-center gap-2 bg-gray-700 hover:bg-gray-600 text-gray-200 px-3 py-2 rounded-lg transition-colors font-medium border border-gray-600 text-sm cursor-pointer"
-                    >
-                      <Key className="w-4 h-4 shrink-0" />
-                      <span>Change Password</span>
-                    </button>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                  </button>
                 </div>
               </div>
             </div>
@@ -657,13 +632,17 @@ export function Profile() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Username</label>
-                <input
-                  type="text"
-                  required
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    value={editUsername}
+                    disabled
+                    readOnly
+                    className="w-full pl-9 pr-4 py-2 bg-gray-900/50 border border-gray-700 rounded-lg text-gray-400 outline-none cursor-not-allowed opacity-60"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">Username cannot be changed after account creation.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Phone Number</label>
@@ -755,7 +734,7 @@ export function Profile() {
                     type={showNewPassword ? 'text' : 'password'}
                     required
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e) => handleNewPasswordChange(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
@@ -777,7 +756,7 @@ export function Profile() {
                     type={showConfirmNewPassword ? 'text' : 'password'}
                     required
                     value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                     className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button

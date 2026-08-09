@@ -93,7 +93,7 @@ export function Pricing() {
                 <ul className="space-y-3 text-sm text-gray-300 mb-8 border-t border-gray-700/60 pt-6">
                   <li className="flex items-center gap-3">
                     <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                    <span>Up to 10 Snippets</span>
+                    <span>Up to 3 Snippets</span>
                   </li>
                   <li className="flex items-center gap-3 text-gray-500">
                     <X className="w-4 h-4 text-gray-500 flex-shrink-0" />

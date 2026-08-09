@@ -59,7 +59,7 @@ export const openRazorpayCheckout = async ({
       amount: order.amount,
       currency: order.currency,
       order_id: order.orderId,
-      name: "Code Snippet Platform",
+      name: "SnipForge",
       description: "PRO Membership Upgrade",
       prefill: {
         name: user?.fullName || user?.name || "Developer",

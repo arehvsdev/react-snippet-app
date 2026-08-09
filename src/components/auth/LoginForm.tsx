@@ -64,22 +64,49 @@ const LoginForm = () => {
     }
   };
 
+  const validateNewPassword = (pass: string) => {
+    if (!pass) return "Password is required.";
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#\._-]).{8,}$/;
+    if (!passwordRegex.test(pass)) {
+      return "Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#.).";
+    }
+    return "";
+  };
+
+  const validateConfirmPassword = (confirmPass: string, pass: string) => {
+    if (!confirmPass) return "Please confirm your password.";
+    if (confirmPass !== pass) return "Passwords do not match.";
+    return "";
+  };
+
+  const handleNewPasswordChange = (val: string) => {
+    setNewPassword(val);
+    const passErr = validateNewPassword(val);
+    const confirmErr = confirmPassword ? validateConfirmPassword(confirmPassword, val) : "";
+    setErrors((prev) => ({
+      ...prev,
+      password: passErr,
+      confirmPassword: confirmErr,
+    }));
+  };
+
+  const handleConfirmPasswordChange = (val: string) => {
+    setConfirmPassword(val);
+    const confirmErr = validateConfirmPassword(val, newPassword);
+    setErrors((prev) => ({
+      ...prev,
+      confirmPassword: confirmErr,
+    }));
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    const passErr = validateNewPassword(newPassword);
+    const confirmErr = validateConfirmPassword(confirmPassword, newPassword);
+
     const newErrors: { password?: string; confirmPassword?: string } = {};
-    if (!newPassword) {
-      newErrors.password = "Password is required.";
-    } else {
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
-      if (!passwordRegex.test(newPassword)) {
-        newErrors.password = "Password must be at least 8 characters, and include at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).";
-      }
-    }
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password.";
-    } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match.";
-    }
+    if (passErr) newErrors.password = passErr;
+    if (confirmErr) newErrors.confirmPassword = confirmErr;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -149,7 +176,7 @@ const LoginForm = () => {
           label="New Password"
           type="password"
           value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
+          onChange={(e) => handleNewPasswordChange(e.target.value)}
           placeholder="••••••••"
           required
           error={errors.password}
@@ -159,7 +186,7 @@ const LoginForm = () => {
           label="Confirm New Password"
           type="password"
           value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
+          onChange={(e) => handleConfirmPasswordChange(e.target.value)}
           placeholder="••••••••"
           required
           error={errors.confirmPassword}

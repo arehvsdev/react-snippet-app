@@ -30,7 +30,7 @@ export function Landing() {
               <div className="bg-white/10 p-2.5 rounded-2xl border border-white/20">
                 <Code2 className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">CodeSnippets</h1>
+              <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight">SnipForge</h1>
             </div>
 
             <h2 className="text-3xl lg:text-4xl font-black text-white mb-4 leading-tight">
