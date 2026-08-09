@@ -8,7 +8,7 @@
  * -------------------------------------------------------
  */
 import React, { useState } from "react";
-import { Search, ChevronDown, HelpCircle, X, Code2, Bookmark, Sparkles, UserCheck } from "lucide-react";
+import { Search, ChevronDown, HelpCircle, X } from "lucide-react";
 
 interface FAQItem {
   id: string;

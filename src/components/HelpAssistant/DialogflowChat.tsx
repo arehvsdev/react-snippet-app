@@ -22,6 +22,22 @@ import type { Message } from "./ChatMessages";
 import { sendQueryToDialogflow } from "../../services/dialogflowApiService";
 import "./DialogflowChat.css";
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      "df-messenger": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          "agent-id"?: string;
+          "chat-title"?: string;
+          "language-code"?: string;
+          intent?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
+
 /** URL of the official Dialogflow Messenger bootstrap script */
 const DF_SCRIPT_SRC =
   "https://www.gstatic.com/dialogflow-console/fast/messenger/bootstrap.js?v=1";
@@ -58,7 +74,8 @@ const loadMessengerScript = (): (() => void) => {
  * Formats current time into readable string (e.g. 10:42 AM)
  */
 const getFormattedTime = (): string => {
-  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const date = new Date();
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 };
 
 export default function DialogflowChat() {
@@ -69,7 +86,7 @@ export default function DialogflowChat() {
   const [isLoading, setIsLoading] = useState(false);
 
   const cleanupRef = useRef<(() => void) | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Response deduplication ref
   const lastProcessedResponseRef = useRef<{ text: string; timestamp: number }>({

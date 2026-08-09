@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 export function Profile() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user, logout, updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'my-snippets' | 'bookmarks'>('my-snippets');
   const [currentUserData, setCurrentUserData] = useState<any>(null);
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
@@ -355,10 +355,6 @@ export function Profile() {
   if (!user || !currentUserData) {
     return null;
   }
-
-  const handleLogout = () => {
-    logout();
-  };
 
   const handleVisibilityToggle = async (snippetId: string, newVisibility: 'public' | 'private') => {
     try {
