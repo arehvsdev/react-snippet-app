@@ -143,7 +143,7 @@ export const CodeSnippet = memo(function CodeSnippet(props: CodeSnippetProps) {
             />
           ))}
         </div>
-        <pre className="bg-gray-950 p-4 rounded-lg overflow-x-auto border border-gray-800 font-mono text-sm text-gray-100 leading-relaxed max-h-[300px] custom-code-scrollbar">
+        <pre className="bg-gray-950 p-4 rounded-lg overflow-x-auto border border-gray-800 font-mono text-sm text-gray-100 leading-relaxed custom-code-scrollbar">
           <code>{code}</code>
         </pre>
       </CardContent>

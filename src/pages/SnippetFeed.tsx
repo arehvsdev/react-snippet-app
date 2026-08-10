@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Filter } from 'lucide-react';
+import { Heart, MessageCircle, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Sparkles, Code2 } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';
@@ -24,6 +24,16 @@ export interface Snippet {
   views: number;
   isBookmarked: boolean;
   category?: any;
+  recommendationScore?: number;
+  ai?: {
+    recommendationScore?: number;
+    sentimentScore?: number;
+    helpfulnessScore?: number;
+    toxicityScore?: number;
+    positiveComments?: number;
+    negativeComments?: number;
+    lastAnalyzed?: string | null;
+  };
 }
 
 export function SnippetFeed() {
@@ -71,11 +81,12 @@ export function SnippetFeed() {
     setPage(1);
   }, [search, language, category, tag, author, sortBy, sortOrder, activeCategory]);
 
-  // Debounced search trigger
+  // Debounced search / recommendation fetch trigger
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       try {
         setLoading(true);
+
         const params: any = {
           page,
           limit: 10,
@@ -88,25 +99,23 @@ export function SnippetFeed() {
           search: search || undefined
         };
 
+        // Fetch live snippets with active filters & sorting (newly created snippets appear at the top)
         const data = await getSnippets(params);
-        setSnippets(data);
+        const snippetList = Array.isArray(data) ? data : ((data as any)?.snippets || []);
+        setSnippets(snippetList);
 
-        const pag = (data as any).pagination;
+        const pag = (data as any)?.pagination;
         if (pag) {
           setPagination(pag);
         } else {
-          setPagination({ totalItems: data.length, totalPages: 1, currentPage: 1 });
+          setPagination({ totalItems: snippetList.length, totalPages: 1, currentPage: 1 });
         }
 
-        if (data.length > 0) {
-          setSelectedSnippet(prev => {
-            if (!prev) return data[0];
-            const stillVisible = data.find(s => s.id === prev.id);
-            return stillVisible || data[0];
-          });
-        } else {
-          setSelectedSnippet(null);
-        }
+        setSelectedSnippet(prev => {
+          if (!prev && snippetList.length > 0) return snippetList[0];
+          const stillVisible = snippetList.find((s: any) => s.id === prev?.id);
+          return stillVisible || (snippetList.length > 0 ? snippetList[0] : null);
+        });
       } catch (err) {
         console.error("Failed to fetch debounced snippets:", err);
       } finally {
@@ -119,7 +128,7 @@ export function SnippetFeed() {
 
   return (
     <Layout>
-      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)] bg-gray-900">
+      <div className="flex flex-col lg:flex-row min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] bg-gray-900 w-full min-w-0 lg:overflow-hidden">
         {/* Sidebar */}
         <Sidebar 
           activeCategory={activeCategory} 
@@ -128,222 +137,270 @@ export function SnippetFeed() {
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
         />
 
-        {/* Mobile Category Bar (Visible only on small screens) */}
-        <div className="lg:hidden p-3 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
-          <button
-            onClick={() => setIsMobileSidebarOpen(true)}
-            className="flex items-center gap-2 text-xs font-semibold text-gray-300 bg-gray-900 px-3 py-2 rounded-lg border border-gray-700 hover:text-white hover:border-blue-500 transition-all shadow-sm"
-            aria-label="Open categories menu"
-          >
-            <Filter className="w-3.5 h-3.5 text-blue-400" />
-            <span>Categories {activeCategory ? `(Filtered)` : ''}</span>
-          </button>
-
-          {activeCategory && (
-            <button
-              onClick={() => setActiveCategory(undefined)}
-              className="text-xs text-blue-400 hover:text-blue-300 font-medium transition-colors"
-            >
-              Clear Category Filter
-            </button>
-          )}
-        </div>
-
         {/* Snippet List Container */}
-        <div className="w-full lg:w-96 bg-gray-800 border-r border-gray-700 flex-shrink-0">
-          <div className="sticky top-16 h-auto lg:h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
-            {/* Search Header */}
-          <div className="p-4 border-b border-gray-700 bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search snippets by title, description, code..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  aria-label="Search snippets"
-                  className="w-full pl-9 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
+        <div className="w-full lg:w-[320px] xl:w-[360px] 2xl:w-[400px] bg-gray-800 border-r border-gray-700/80 flex-shrink-0 flex flex-col min-w-0 h-auto lg:h-full overflow-hidden">
+          <div className="h-full flex flex-col overflow-hidden">
+            {/* Search Header & Advanced Filter Container */}
+            <div className="p-4 border-b border-gray-700/80 bg-gray-800 sticky top-0 z-20 flex flex-col gap-3 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-400 fill-purple-400/20" />
+                  <span>Recommended for You</span>
+                </h2>
               </div>
-              <button
-                onClick={() => setShowAdvanced(!showAdvanced)}
-                className={`p-2 rounded-lg border transition-all ${
-                  showAdvanced
-                    ? 'bg-blue-600 border-blue-500 text-white'
-                    : 'bg-gray-900 border-gray-700 text-gray-400 hover:text-white'
-                }`}
-                title="Advanced Filters"
-                aria-label="Advanced filters"
-                aria-expanded={showAdvanced}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Advanced Filters Panel */}
-            {showAdvanced && (
-              <div className="space-y-2.5 p-3 bg-gray-900/50 border border-gray-700 rounded-lg animate-in fade-in slide-in-from-top-2 duration-155">
-                {/* Language Dropdown */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1">Language</label>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white outline-none focus:border-blue-500"
-                  >
-                    <option value="">All Languages</option>
-                    {languages.map(lang => (
-                      <option key={lang._id} value={lang.name}>{lang.name}</option>
-                    ))}
-                  </select>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search snippets by title, description, code..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    aria-label="Search snippets"
+                    className="w-full pl-9 pr-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
                 </div>
+                <button
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className={`p-2 rounded-lg border transition-all ${
+                    showAdvanced
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-600/20'
+                      : 'bg-gray-900 border-gray-700 text-gray-400 hover:text-white'
+                  }`}
+                  title="Advanced Filters"
+                  aria-label="Advanced filters"
+                  aria-expanded={showAdvanced}
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                </button>
+              </div>
 
-                {/* Category Dropdown */}
-                {!activeCategory && (
+              {/* Advanced Filters Panel (Integrated inside sticky header with solid background) */}
+              {showAdvanced && (
+                <div className="space-y-3 p-3.5 bg-gray-900 border border-gray-700/80 rounded-xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-150 mt-1">
+                  {/* Language Dropdown */}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Category</label>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1">Language</label>
                     <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white outline-none focus:border-blue-500"
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
                     >
-                      <option value="">All Categories</option>
-                      {categories.map(cat => (
-                        <option key={cat._id} value={cat._id}>{cat.name}</option>
+                      <option value="">All Languages</option>
+                      {languages.map(lang => (
+                        <option key={lang._id} value={lang.name}>{lang.name}</option>
                       ))}
                     </select>
                   </div>
-                )}
 
-                {/* Tag Search */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1">Tag</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. react"
-                    value={tag}
-                    onChange={(e) => setTag(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white outline-none focus:border-blue-500 placeholder-gray-600"
-                  />
-                </div>
+                  {/* Category Dropdown */}
+                  {!activeCategory && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Category</label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">All Categories</option>
+                        {categories.map(cat => (
+                          <option key={cat._id} value={cat._id}>{cat.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
-                {/* Author Search */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-400 mb-1">Author</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. admin"
-                    value={author}
-                    onChange={(e) => setAuthor(e.target.value)}
-                    className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white outline-none focus:border-blue-500 placeholder-gray-600"
-                  />
-                </div>
-
-                {/* Sort Controls */}
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Sort By</label>
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white outline-none focus:border-blue-500"
-                    >
-                      <option value="createdAt">Date Created</option>
-                      <option value="title">Title</option>
-                      <option value="views">Views</option>
-                      <option value="likes">Likes</option>
-                      <option value="bookmarksCount">Bookmarks</option>
-                    </select>
+                  {/* Tag & Author Inputs */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Tag</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. react"
+                        value={tag}
+                        onChange={(e) => setTag(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 placeholder-gray-600 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Author</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. admin"
+                        value={author}
+                        onChange={(e) => setAuthor(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 placeholder-gray-600 transition-colors"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-400 mb-1">Order</label>
-                    <button
-                      type="button"
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                      className="px-2.5 py-1.5 bg-gray-900 border border-gray-700 rounded text-xs text-white hover:bg-gray-800 flex items-center gap-1.5"
-                    >
-                      <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
-                      {sortOrder.toUpperCase()}
-                    </button>
+
+                  {/* Sort Controls */}
+                  <div className="flex gap-2 items-end pt-1">
+                    <div className="flex-1">
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Sort By</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                      >
+                        <option value="createdAt">Date Created</option>
+                        <option value="aiScore">✨ AI Quality Score</option>
+                        <option value="title">Title</option>
+                        <option value="views">Views</option>
+                        <option value="likes">Likes</option>
+                        <option value="bookmarksCount">Bookmarks</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1">Order</label>
+                      <button
+                        type="button"
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className="px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs font-semibold text-white hover:bg-gray-900 flex items-center gap-1.5 transition-colors"
+                      >
+                        <ArrowUpDown className="w-3.5 h-3.5 text-gray-400" />
+                        {sortOrder.toUpperCase()}
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Mobile Snippet Selector Dropdown (< 1024px) */}
+            {Array.isArray(snippets) && snippets.length > 0 && (
+              <div className="block lg:hidden px-4 pt-3 pb-3 border-b border-gray-700/80 bg-gray-900">
+                <label htmlFor="mobile-snippet-select" className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Code2 className="w-3.5 h-3.5 text-blue-400" />
+                    Select Snippet ({snippets.length})
+                  </span>
+                  {selectedSnippet && (
+                    <span className="text-blue-400 font-mono text-[10px] bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">
+                      {selectedSnippet.language}
+                    </span>
+                  )}
+                </label>
+                <select
+                  id="mobile-snippet-select"
+                  value={selectedSnippet?.id || ''}
+                  onChange={(e) => {
+                    const found = snippets.find((s) => s.id === e.target.value);
+                    if (found) {
+                      setSelectedSnippet(found);
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-white text-xs font-semibold outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                >
+                  {snippets.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.title} ({s.language}) — {s.author.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             )}
-          </div>
 
-          {/* Snippet List Scroll Pane */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {loading ? (
-              <div className="flex justify-center items-center py-20" role="status" aria-busy="true">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+          {/* Snippet List Scroll Pane (Desktop view) */}
+          <div className="hidden lg:block flex-1 lg:overflow-y-auto p-4 space-y-3">
+            {loading && (!Array.isArray(snippets) || snippets.length === 0) ? (
+              /* 1. Initial Load: Centered Loader */
+              <div className="flex-1 flex flex-col justify-center items-center py-24 min-h-[300px]" role="status" aria-busy="true">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+                <p className="text-xs font-semibold text-gray-400">Loading snippets...</p>
                 <span className="sr-only">Loading snippets...</span>
               </div>
-            ) : snippets.length > 0 ? (
-              snippets.map((snippet) => (
-                <button
-                  key={snippet.id}
-                  onClick={() => setSelectedSnippet(snippet)}
-                  className={`w-full text-left p-4 rounded-lg transition-all border ${
-                    selectedSnippet?.id === snippet.id
-                      ? 'bg-gray-700/60 border-blue-500 shadow-md shadow-blue-500/5'
-                      : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700/40 hover:border-gray-600'
-                  }`}
-                >
-                  {/* Author Info */}
-                  <div className="flex items-center gap-2 mb-2">
-                    <img
-                      src={snippet.author.avatar}
-                      alt={snippet.author.name}
-                      className="w-6 h-6 rounded-full border border-gray-600"
-                    />
-                    <span className="text-xs font-medium text-gray-300 truncate max-w-[120px]">
-                      {snippet.author.name}
-                    </span>
-                    <span className="text-xs text-gray-500 ml-auto">{snippet.createdAt}</span>
-                  </div>
+            ) : Array.isArray(snippets) && snippets.length > 0 ? (
+              /* 2. Snippet Items List */
+              <>
+                {snippets.map((snippet) => (
+                  <button
+                    key={snippet.id}
+                    type="button"
+                    onClick={() => setSelectedSnippet(snippet)}
+                    className={`w-full text-left p-3.5 sm:p-4 rounded-xl transition-all border group cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                      selectedSnippet?.id === snippet.id
+                        ? 'bg-gray-700/70 border-blue-500 shadow-md shadow-blue-500/10'
+                        : 'bg-gray-800/60 border-gray-700/80 hover:bg-gray-750 hover:border-gray-600'
+                    }`}
+                  >
+                    {/* Author Info & Date Header */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <img
+                          src={snippet.author.avatar}
+                          alt={snippet.author.name}
+                          className="w-6 h-6 rounded-full border border-gray-600 object-cover flex-shrink-0"
+                        />
+                        <span className="text-xs font-semibold text-gray-300 truncate">
+                          {snippet.author.name}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-400 font-medium flex-shrink-0">{snippet.createdAt}</span>
+                    </div>
 
-                  {/* Title */}
-                  <h3 className="font-bold text-white mb-1.5 line-clamp-2 text-sm leading-snug">
-                    {snippet.title}
-                  </h3>
+                    {/* Title */}
+                    <h3 className="font-bold text-white mb-2 text-sm sm:text-base leading-snug break-words line-clamp-2 group-hover:text-blue-300 transition-colors">
+                      {snippet.title}
+                    </h3>
 
-                  {/* Badges */}
-                  <div className="flex flex-wrap gap-1.5 mb-2.5">
-                    <span className="inline-block px-2 py-0.5 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[10px] font-bold rounded">
-                      {snippet.language}
-                    </span>
-                    {snippet.category && (
-                      <span className="inline-block px-2 py-0.5 bg-purple-600/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold rounded">
-                        {typeof snippet.category === 'object' ? snippet.category.name : 'Category'}
+                    {/* Badges & AI Score Tag */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                      <span className="inline-block px-2.5 py-0.5 bg-blue-600/15 border border-blue-500/30 text-blue-400 text-[11px] font-bold rounded-md uppercase tracking-wider">
+                        {snippet.language}
                       </span>
-                    )}
-                  </div>
+                      {snippet.category && (
+                        <span className="inline-block px-2.5 py-0.5 bg-purple-600/15 border border-purple-500/30 text-purple-300 text-[11px] font-bold rounded-md">
+                          {typeof snippet.category === 'object' ? snippet.category.name : 'Category'}
+                        </span>
+                      )}
+                      {(snippet.recommendationScore || snippet.ai?.recommendationScore) ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold rounded-md ml-auto">
+                          <Sparkles className="w-3 h-3 text-amber-400 fill-amber-400/20" />
+                          <span>Score: {snippet.recommendationScore ?? snippet.ai?.recommendationScore}</span>
+                        </span>
+                      ) : null}
+                    </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-3 text-xs text-gray-400 pt-1.5 border-t border-gray-700/35">
-                    <span className="flex items-center gap-1 font-medium">
-                      <Heart className="w-3 h-3 text-red-500/70" />
-                      {snippet.likes}
-                    </span>
-                    <span className="flex items-center gap-1 font-medium">
-                      <MessageCircle className="w-3 h-3 text-blue-500/70" />
-                      {snippet.comments}
-                    </span>
-                    <span className="flex items-center gap-1 font-medium">
-                      <Eye className="w-3 h-3 text-green-500/70" />
-                      {snippet.views}
-                    </span>
+                    {/* Stats Footer */}
+                    <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-700/50">
+                      <span className="flex items-center gap-1 font-medium hover:text-red-400 transition-colors">
+                        <Heart className="w-3.5 h-3.5 text-red-500/80" />
+                        {snippet.likes}
+                      </span>
+                      <span className="flex items-center gap-1 font-medium hover:text-blue-400 transition-colors">
+                        <MessageCircle className="w-3.5 h-3.5 text-blue-500/80" />
+                        {snippet.comments}
+                      </span>
+                      <span className="flex items-center gap-1 font-medium hover:text-green-400 transition-colors">
+                        <Eye className="w-3.5 h-3.5 text-green-500/80" />
+                        {snippet.views}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+
+                {/* 3. Inline Loader for Infinite Scroll / Page Fetching */}
+                {loading && (
+                  <div className="flex items-center justify-center gap-2.5 py-3.5 min-h-[60px] bg-gray-800/40 border border-gray-700/50 rounded-xl my-2 animate-in fade-in duration-150" role="status" aria-busy="true">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                    <span className="text-xs font-semibold text-gray-300">Fetching additional snippets...</span>
                   </div>
-                </button>
-              ))
+                )}
+
+                {/* Infinite Scroll Sentinel */}
+                <div id="infinite-scroll-sentinel" className="h-1 w-full" />
+              </>
             ) : (
+              /* 4. Empty State */
               <div className="text-center py-20">
                 <Search className="w-12 h-12 text-gray-600 mx-auto mb-3" />
                 <p className="text-gray-300 text-sm font-semibold">No snippets found</p>
                 <p className="text-gray-400 text-xs mt-1 mb-3">Try adjusting your filters or search keywords.</p>
                 {(search || language || category || tag || author || activeCategory) && (
                   <button
+                    type="button"
                     onClick={() => {
                       setSearch('');
                       setLanguage('');
@@ -352,7 +409,7 @@ export function SnippetFeed() {
                       setAuthor('');
                       setActiveCategory(undefined);
                     }}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm cursor-pointer"
                   >
                     Clear All Filters
                   </button>
@@ -389,13 +446,17 @@ export function SnippetFeed() {
       </div>
 
       {/* Detail View */}
-        <div className="flex-1 bg-gray-900 min-w-0">
+        <div id="snippet-detail-container" className="flex-1 min-w-0 min-h-0 w-full bg-gray-900 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           {selectedSnippet ? (
-            <SnippetDetail snippet={selectedSnippet} />
+            <SnippetDetail snippet={selectedSnippet} onSelectSnippet={setSelectedSnippet} />
           ) : (
             <div className="flex items-center justify-center h-full min-h-[400px]">
-              <div className="text-center">
-                <p className="text-gray-400 text-lg">Select a snippet to view details</p>
+              <div className="text-center p-6">
+                <div className="w-16 h-16 rounded-full bg-gray-800 border border-gray-700/80 flex items-center justify-center mx-auto mb-4 text-gray-500 shadow-inner">
+                  <Code2 className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-300 text-lg font-bold">Select a snippet to view details</p>
+                <p className="text-gray-500 text-xs mt-1">Choose any snippet from the feed to inspect code, comments, and AI similarity insights.</p>
               </div>
             </div>
           )}

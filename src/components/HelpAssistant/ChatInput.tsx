@@ -23,29 +23,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = 
     textareaRef.current?.focus();
   }, []);
 
-  const isSubmittingRef = useRef(false);
-
-  const handleSend = () => {
+  const submitMessage = () => {
     const trimmed = text.trim();
-    if (!trimmed || disabled || isSubmittingRef.current) return;
+    if (!trimmed || disabled) return;
 
-    isSubmittingRef.current = true;
     onSendMessage(trimmed);
     setText("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-
-    // Release submit lock on next microtask
-    setTimeout(() => {
-      isSubmittingRef.current = false;
-    }, 100);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      submitMessage();
     }
   };
 
@@ -63,7 +55,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, disabled = 
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          handleSend();
+          submitMessage();
         }}
         className="flex items-end gap-2"
       >

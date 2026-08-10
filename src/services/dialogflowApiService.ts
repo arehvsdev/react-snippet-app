@@ -27,11 +27,26 @@ const getSessionId = (): string => {
   return currentSessionId;
 };
 
+// Debouncing state to prevent rapid duplicate query dispatches
+let lastQueryText = "";
+let lastQueryTimestamp = 0;
+
 /**
  * Sends a query text directly to the Dialogflow API or <df-messenger> element.
- * Does NOT register competing event listeners on window.
+ * Enforces strict single-transport execution to prevent duplicate requests.
  */
 export const sendQueryToDialogflow = async (queryText: string): Promise<boolean> => {
+  const trimmed = queryText.trim();
+  if (!trimmed) return false;
+
+  // Debounce check: ignore identical query dispatched within 300ms
+  const now = Date.now();
+  if (lastQueryText === trimmed && now - lastQueryTimestamp < 300) {
+    return false;
+  }
+  lastQueryText = trimmed;
+  lastQueryTimestamp = now;
+
   const session = getSessionId();
 
   // 1. Try Direct Google Dialogflow REST API if API Key is configured
@@ -44,7 +59,7 @@ export const sendQueryToDialogflow = async (queryText: string): Promise<boolean>
         body: JSON.stringify({
           queryInput: {
             text: {
-              text: queryText,
+              text: trimmed,
               languageCode: LANGUAGE_CODE,
             },
           },
@@ -60,12 +75,13 @@ export const sendQueryToDialogflow = async (queryText: string): Promise<boolean>
             detail: { response: { queryResult: data.queryResult } },
           });
           window.dispatchEvent(customEvent);
-          return true;
         }
       }
     } catch (err) {
       console.warn("[dialogflowApiService] REST API error:", err);
     }
+    // Strict non-fallthrough: when API_KEY is configured, REST API is the authoritative transport
+    return true;
   }
 
   // 2. Transport via <df-messenger> Custom Element
@@ -74,7 +90,7 @@ export const sendQueryToDialogflow = async (queryText: string): Promise<boolean>
 
   try {
     if (typeof dfMessengerEl.sendQuery === "function") {
-      dfMessengerEl.sendQuery(queryText);
+      dfMessengerEl.sendQuery(trimmed);
       return true;
     }
 
@@ -88,9 +104,8 @@ export const sendQueryToDialogflow = async (queryText: string): Promise<boolean>
     const sendBtn = shadow3?.querySelector("button") || shadow3?.querySelector("#sendIcon") || shadow3?.querySelector(".send-icon");
 
     if (inputEl) {
-      (inputEl as any).value = queryText;
+      (inputEl as any).value = trimmed;
       inputEl.dispatchEvent(new Event("input", { bubbles: true }));
-      inputEl.dispatchEvent(new Event("change", { bubbles: true }));
       if (sendBtn) {
         (sendBtn as HTMLElement).click();
         return true;
@@ -102,3 +117,4 @@ export const sendQueryToDialogflow = async (queryText: string): Promise<boolean>
 
   return false;
 };
+

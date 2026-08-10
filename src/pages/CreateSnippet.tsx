@@ -1,18 +1,42 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Crown, ShieldCheck, Lock, Globe } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Sparkles,
+  Crown,
+  ShieldCheck,
+  Lock,
+  Globe,
+  Check,
+  Code,
+  FileText,
+  CheckCircle2,
+  Copy,
+  Edit3,
+  Plus
+} from 'lucide-react';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { ProBadge } from '../components/subscription/ProBadge';
 import { PlanBadge } from '../components/subscription/PlanBadge';
 import { UpgradeModal } from '../components/subscription/UpgradeModal';
-import { createSnippet, updateSnippet, getSnippetById, getSnippets, getLanguages, getTags } from '../services/snippetService';
+import {
+  createSnippet,
+  updateSnippet,
+  getSnippetById,
+  getSnippets,
+  getLanguages,
+  getTags,
+  getMySnippetStats
+} from '../services/snippetService';
 import toast from 'react-hot-toast';
 
 /**
- * Create and Edit Snippet Component with Frontend Feature Gating:
- * - FREE users: Maximum 3 snippets, Public snippets only.
- * - PRO users: Unlimited snippets, Public/Private visibility selector.
+ * 3-Step Wizard for Creating and Editing Code Snippets:
+ * Step 1: Code & Visibility
+ * Step 2: Snippet Details
+ * Step 3: Review & Publish
  */
 export function CreateSnippet() {
   const navigate = useNavigate();
@@ -22,6 +46,9 @@ export function CreateSnippet() {
   // Feature gating flag
   const isPro = user?.plan === 'PRO';
   const isEditMode = !!id;
+
+  // Wizard Step State (1, 2, or 3)
+  const [currentStep, setCurrentStep] = useState<number>(1);
 
   // Form input states
   const [title, setTitle] = useState('');
@@ -38,6 +65,7 @@ export function CreateSnippet() {
   const [isPublic, setIsPublic] = useState(true);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [userSnippetCount, setUserSnippetCount] = useState<number>(0);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   // Validation error states
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -49,11 +77,18 @@ export function CreateSnippet() {
         const langList = await getLanguages({ active: true });
         setLanguagesList(langList);
 
-        // Track snippet count for FREE tier limit enforcement
+        // Track snippet count accurately via getMySnippetStats
         if (user) {
-          const userId = user.id || user.uid;
-          const userSnippets = await getSnippets({ userId });
-          setUserSnippetCount(userSnippets.length);
+          try {
+            const stats = await getMySnippetStats();
+            setUserSnippetCount(stats.total || (stats.public + stats.private) || 0);
+          } catch (err) {
+            const userId = user.id || user.uid || (user as any)._id;
+            if (userId) {
+              const userSnippets = await getSnippets({ userId });
+              setUserSnippetCount(userSnippets.length);
+            }
+          }
         }
         
         if (isEditMode && id) {
@@ -70,7 +105,7 @@ export function CreateSnippet() {
           setLangSearchInput(langList[0].name);
         }
       } catch (err) {
-        console.error("Failed to load snippet data:", err);
+        console.error('Failed to load snippet data:', err);
       }
     };
     loadData();
@@ -86,11 +121,11 @@ export function CreateSnippet() {
       try {
         const matches = await getTags({ active: true, search: tagInput.trim() });
         const filteredMatches = matches.filter(
-          (t: any) => !selectedTags.includes(t.name)
+          (t: any) => !selectedTags.includes(t.name.toLowerCase())
         );
         setSuggestedTags(filteredMatches);
       } catch (err) {
-        console.error("Failed to load tag suggestions:", err);
+        console.error('Failed to load tag suggestions:', err);
       }
     }, 200);
     return () => clearTimeout(delayDebounce);
@@ -105,38 +140,121 @@ export function CreateSnippet() {
     return () => document.removeEventListener('click', handleClose);
   }, []);
 
-  // Form submission handler with frontend feature gating
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isLimitReached = !isPro && !isEditMode && userSnippetCount >= 3;
 
-    // 1. FREE Plan Limit Check: Maximum 10 snippets
-    if (!isPro && !isEditMode && userSnippetCount >= 3) {
-      toast.error("Upgrade to PRO for unlimited snippets.");
-      setIsUpgradeModalOpen(true);
-      return;
-    }
-
-    // 2. Input validation checks
+  // Step Validation Helpers
+  const validateStep1 = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!title || title.length < 3) {
+    if (!code || code.trim().length < 10) {
+      newErrors.code = 'Code must be at least 10 characters';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validateStep2 = () => {
+    const newErrors: { [key: string]: string } = {};
+    if (!title || title.trim().length < 3) {
       newErrors.title = 'Title must be at least 3 characters';
     }
     if (!language) {
       newErrors.language = 'Language is required';
     }
-    if (!code || code.length < 10) {
-      newErrors.code = 'Code must be at least 10 characters';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextStep = () => {
+    if (isLimitReached) {
+      toast.error('Free tier snippet limit reached (3/3). Upgrade to PRO to create more.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+    if (currentStep === 1) {
+      if (validateStep1()) {
+        setCurrentStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else if (currentStep === 2) {
+      if (validateStep2()) {
+        setCurrentStep(3);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
+  const handlePrevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // Keyboard navigation (Ctrl/Cmd + ArrowRight / ArrowLeft)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isLimitReached) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNextStep();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevStep();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentStep, code, title, language, isLimitReached]);
+
+  const handleStepClick = (targetStep: number) => {
+    if (isLimitReached) {
+      toast.error('Free tier snippet limit reached (3/3). Upgrade to PRO to create more.');
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+    if (targetStep < currentStep) {
+      setCurrentStep(targetStep);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (targetStep === 2 && currentStep === 1) {
+      if (validateStep1()) {
+        setCurrentStep(2);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else if (targetStep === 3) {
+      if (validateStep1() && validateStep2()) {
+        setCurrentStep(3);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
+  // Form submission handler
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    // 1. FREE Plan Limit Check: Maximum 3 snippets
+    if (isLimitReached) {
+      toast.error('Free tier snippet limit reached (3/3). Upgrade to PRO for unlimited snippets.');
+      setIsUpgradeModalOpen(true);
+      return;
     }
 
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    // 2. Full validation checks
+    const isStep1Valid = validateStep1();
+    const isStep2Valid = validateStep2();
+
+    if (!isStep1Valid) {
+      setCurrentStep(1);
+      return;
+    }
+    if (!isStep2Valid) {
+      setCurrentStep(2);
       return;
     }
 
     setErrors({});
     
     try {
-      // 3. FREE users are fixed to 'public' visibility; PRO users can choose 'public' or 'private'
       const targetVisibility = isPro ? (isPublic ? 'public' : 'private') : 'public';
 
       const snippet = {
@@ -163,297 +281,736 @@ export function CreateSnippet() {
     }
   };
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    toast.success('Code copied to clipboard!');
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const steps = [
+    { number: 1, title: 'Code & Visibility', icon: Code, subtitle: 'Source code & access' },
+    { number: 2, title: 'Snippet Details', icon: FileText, subtitle: 'Title, language & tags' },
+    { number: 3, title: 'Review & Publish', icon: CheckCircle2, subtitle: 'Verify & save' }
+  ];
+
+  const filteredLanguages = languagesList.filter((lang) =>
+    lang.name.toLowerCase().includes(langSearchInput.toLowerCase())
+  );
+  const hasExactLanguageMatch = languagesList.some(
+    (lang) => lang.name.toLowerCase() === langSearchInput.trim().toLowerCase()
+  );
+
+  const cleanedTagInput = tagInput.trim().toLowerCase().replace(/^#/, '');
+  const hasExactTagMatch = suggestedTags.some(
+    (t) => t.name.toLowerCase() === cleanedTagInput
+  );
+
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <button
-          onClick={() => navigate('/snippet-feed')}
-          className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          Back to Snippets
-        </button>
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-32">
 
-        <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-3xl font-bold text-white">
-              {isEditMode ? 'Edit Snippet' : 'Create New Snippet'}
-            </h1>
+        {/* ── Top Navigation & Page Title Bar ── */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={() => navigate('/snippet-feed')}
+              className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors cursor-pointer text-sm font-medium shrink-0 min-h-[44px] px-2 rounded-lg hover:bg-gray-800"
+              aria-label="Back to snippets"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back</span>
+            </button>
+            <div className="w-px h-5 bg-gray-700 shrink-0" aria-hidden="true" />
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">
+                {isEditMode ? 'Edit Snippet' : 'Create New Snippet'}
+              </h1>
+            </div>
+          </div>
+          <div className="shrink-0 flex items-center gap-2">
             {isPro ? <ProBadge size="sm" /> : <PlanBadge plan="FREE" size="sm" />}
           </div>
-          <p className="text-gray-400 mb-6">
-            {isEditMode ? 'Modify your code snippet details' : 'Add a new code snippet to your collection'}
-          </p>
+        </div>
 
-          {/* Subscription Notice Banner */}
-          {!isPro ? (
-            <div className="mb-8 p-4 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-amber-500/10 border border-blue-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs sm:text-sm">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-blue-500/20 text-blue-400">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-semibold text-white">Free Tier Limits: </span>
-                  <span className="text-gray-300">
-                    Max 3 public snippets ({userSnippetCount}/3 used). <strong className="text-amber-400">Upgrade to PRO for unlimited snippets & private storage</strong>.
-                  </span>
-                </div>
+        {/* ── LOCKED SCREEN WHEN FREE LIMIT (3/3) IS REACHED ── */}
+        {isLimitReached ? (
+          <div className="bg-gray-800/90 border border-amber-500/30 rounded-2xl p-6 sm:p-10 shadow-2xl text-center max-w-2xl mx-auto space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 border border-amber-500/40 flex items-center justify-center mx-auto text-amber-400 shadow-inner">
+              <Lock className="w-8 h-8 sm:w-10 sm:h-10 stroke-[2.2]" />
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold uppercase tracking-wider">
+                <ShieldCheck className="w-3.5 h-3.5" /> Limit Reached (3 / 3 Snippets)
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                Free Tier Snippet Limit Reached
+              </h2>
+              <p className="text-gray-300 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+                You have created <strong className="text-white">3 of 3</strong> public snippets on your Free account. Upgrade to <strong className="text-amber-300 font-bold">PRO</strong> to unlock unlimited snippet creation and private cloud storage.
+              </p>
+            </div>
+
+            {/* Limit Progress Bar Card */}
+            <div className="bg-gray-900/80 p-4 rounded-xl border border-gray-700/80 max-w-md mx-auto space-y-2">
+              <div className="flex items-center justify-between text-xs font-semibold">
+                <span className="text-gray-400">Storage Usage</span>
+                <span className="text-amber-400">3 of 3 Snippets Used (100%)</span>
               </div>
+              <div className="w-full h-2.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-400 rounded-full w-full" />
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 type="button"
                 onClick={() => setIsUpgradeModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-400 text-xs shadow-md shrink-0 cursor-pointer"
+                className="w-full sm:w-auto px-7 py-3 rounded-xl font-bold text-gray-950 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 hover:from-amber-300 hover:to-yellow-400 shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer text-sm flex items-center justify-center gap-2 min-h-[46px]"
               >
-                <Sparkles className="w-3.5 h-3.5 fill-current" /> Upgrade to PRO
-              </button>
-            </div>
-          ) : (
-            <div className="mb-8 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3 text-xs sm:text-sm">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                  <Crown className="w-5 h-5 fill-current" />
-                </div>
-                <div>
-                  <span className="font-bold text-amber-300">PRO Membership Active: </span>
-                  <span className="text-gray-300">Unlimited public & private code snippets enabled.</span>
-                </div>
-              </div>
-              <ProBadge size="xs" />
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title Field */}
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-2">
-                Title <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="title"
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={`w-full px-4 py-2 bg-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 ${errors.title ? 'border-red-500' : 'border-gray-600'}`}
-                placeholder="e.g., React useState Hook"
-              />
-              {errors.title && (
-                <p className="mt-1 text-sm text-red-400">{errors.title}</p>
-              )}
-            </div>
-
-            {/* Language Field */}
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-2">
-                Language <span className="text-red-400">*</span>
-              </label>
-              <input
-                id="language"
-                type="text"
-                placeholder="Type to search or enter custom language..."
-                value={langSearchInput}
-                onChange={(e) => {
-                  setLangSearchInput(e.target.value);
-                  setLanguage(e.target.value);
-                  setShowLangSuggestions(true);
-                }}
-                onFocus={() => setShowLangSuggestions(true)}
-                className={`w-full px-4 py-2 bg-gray-900 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500 ${errors.language ? 'border-red-500' : 'border-gray-600'}`}
-              />
-              {showLangSuggestions && (
-                <div className="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50">
-                  {languagesList
-                    .filter((lang) =>
-                      lang.name.toLowerCase().includes(langSearchInput.toLowerCase())
-                    )
-                    .map((lang) => (
-                      <button
-                        key={lang._id}
-                        type="button"
-                        onClick={() => {
-                          setLanguage(lang.name);
-                          setLangSearchInput(lang.name);
-                          setShowLangSuggestions(false);
-                        }}
-                        className="w-full text-left px-4 py-2.5 hover:bg-gray-700 transition-colors text-white border-b border-gray-800 last:border-0 cursor-pointer"
-                      >
-                        {lang.name}
-                      </button>
-                    ))}
-                </div>
-              )}
-              {errors.language && (
-                <p className="mt-1 text-sm text-red-400">{errors.language}</p>
-              )}
-            </div>
-
-            {/* Visibility Field (Gated for PRO Users) */}
-            {isPro ? (
-              <div className="bg-gray-900/40 p-4 border border-gray-700 rounded-lg flex items-center justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-0.5 flex items-center gap-2">
-                    {isPublic ? <Globe className="w-4 h-4 text-emerald-400" /> : <Lock className="w-4 h-4 text-amber-400" />}
-                    Snippet Visibility
-                  </label>
-                  <p className="text-xs text-gray-400">
-                    {isPublic 
-                      ? 'Anyone on the platform can view and bookmark this snippet.' 
-                      : 'Only you can view and access this snippet.'}
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer select-none">
-                  <input 
-                    type="checkbox" 
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                  <span className="ms-3 text-sm font-semibold text-gray-300">
-                    {isPublic ? 'Public' : 'Private'}
-                  </span>
-                </label>
-              </div>
-            ) : (
-              <div className="bg-gray-900/40 p-4 border border-gray-700 rounded-lg flex items-center justify-between">
-                <div>
-                  <label className="block text-sm font-medium text-white mb-0.5 flex items-center gap-2">
-                    <Globe className="w-4 h-4 text-emerald-400" /> Visibility (Public Only)
-                  </label>
-                  <p className="text-xs text-gray-400">
-                    FREE plan users can create Public snippets only. Upgrade to PRO to enable Private snippets.
-                  </p>
-                </div>
-                <span className="px-3 py-1 bg-gray-800 border border-gray-700 text-gray-300 text-xs font-semibold rounded-full">
-                  Public
-                </span>
-              </div>
-            )}
-
-            {/* Description Field */}
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-                Description
-              </label>
-              <input
-                id="description"
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-white placeholder-gray-500"
-                placeholder="Brief description of the snippet"
-              />
-            </div>
-
-            {/* Tags Field */}
-            <div className="relative" onClick={(e) => e.stopPropagation()}>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Tags
-              </label>
-              
-              {selectedTags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {selectedTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-700 text-white text-sm rounded-full border border-gray-650 font-medium"
-                    >
-                      #{tag}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
-                        className="w-4 h-4 rounded-full flex items-center justify-center bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-900 transition-colors text-xs font-bold"
-                      >
-                        &times;
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              <input
-                type="text"
-                placeholder="Type to search tags, press Enter or comma to add custom tag..."
-                value={tagInput}
-                onChange={(e) => {
-                  setTagInput(e.target.value);
-                  setShowSuggestions(true);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ',') {
-                    e.preventDefault();
-                    const cleanedVal = tagInput.trim().toLowerCase().replace(/,/g, '');
-                    if (cleanedVal && !selectedTags.includes(cleanedVal)) {
-                      setSelectedTags([...selectedTags, cleanedVal]);
-                      setTagInput('');
-                      setSuggestedTags([]);
-                    }
-                  }
-                }}
-                onFocus={() => setShowSuggestions(true)}
-                className="w-full px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-500"
-              />
-              
-              {showSuggestions && tagInput.trim() && (
-                <div className="absolute left-0 right-0 mt-2 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl max-h-60 overflow-y-auto z-50">
-                  {suggestedTags.map((tag) => (
-                    <button
-                      key={tag._id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTags([...selectedTags, tag.name]);
-                        setTagInput('');
-                        setSuggestedTags([]);
-                        setShowSuggestions(false);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-700 transition-colors flex items-center justify-between border-b border-gray-800 last:border-0 cursor-pointer"
-                    >
-                      <span className="font-semibold text-white">#{tag.name}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Code Field */}
-            <div>
-              <label htmlFor="code" className="block text-sm font-medium text-gray-300 mb-2">
-                Code <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                id="code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                rows={12}
-                className={`w-full px-4 py-2 bg-gray-950 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition font-mono text-sm text-gray-100 placeholder-gray-500 ${errors.code ? 'border-red-500' : 'border-gray-600'}`}
-                placeholder="Paste your code snippet here..."
-              />
-              {errors.code && (
-                <p className="mt-1 text-sm text-red-400">{errors.code}</p>
-              )}
-            </div>
-
-            {/* Form Actions */}
-            <div className="flex gap-4 pt-4">
-              <button
-                type="submit"
-                className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium cursor-pointer"
-              >
-                {isEditMode ? 'Save Changes' : 'Create Snippet'}
+                <Sparkles className="w-4 h-4 fill-current" />
+                <span>Upgrade to PRO Now</span>
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/snippet-feed')}
-                className="px-6 py-3 border border-gray-600 rounded-lg hover:bg-gray-700 transition-colors font-medium text-gray-300 cursor-pointer"
+                onClick={() => navigate('/profile')}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl font-semibold text-gray-300 hover:text-white border border-gray-700 hover:border-gray-500 bg-gray-900/60 transition-all cursor-pointer text-sm flex items-center justify-center gap-2 min-h-[46px]"
               >
-                Cancel
+                <span>Manage My Snippets</span>
               </button>
             </div>
-          </form>
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* ── Slim Free Plan Banner ── */}
+            {!isPro ? (
+              <div className="mb-6 py-2.5 px-4 rounded-xl bg-blue-500/[0.07] border border-blue-500/20 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-semibold text-white text-xs">Free Tier: </span>
+                    <span className="text-gray-400 text-xs">
+                      {userSnippetCount}/3 snippets used.{' '}
+                      <strong className="text-amber-400">Upgrade to PRO for unlimited snippets &amp; private storage</strong>.
+                    </span>
+                  </div>
+                </div>
+                <div className="hidden sm:flex items-center gap-3 shrink-0">
+                  <div className="w-24 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min((userSnippetCount / 3) * 100, 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">{userSnippetCount}/3</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsUpgradeModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-bold text-gray-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-400 text-xs shadow-sm shrink-0 cursor-pointer transition-all active:scale-95 min-h-[32px]"
+                >
+                  <Sparkles className="w-3 h-3 fill-current" /> Upgrade
+                </button>
+              </div>
+            ) : (
+              <div className="mb-6 py-2.5 px-4 rounded-xl bg-amber-500/[0.07] border border-amber-500/20 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400 shrink-0">
+                    <Crown className="w-4 h-4 fill-current" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-amber-300 text-xs">PRO Active: </span>
+                    <span className="text-gray-400 text-xs">Unlimited public &amp; private code snippets enabled.</span>
+                  </div>
+                </div>
+                <ProBadge size="xs" />
+              </div>
+            )}
+
+            {/* ── STEPPER HEADER ── */}
+            <div className="bg-gray-800/80 rounded-2xl border border-gray-700/80 p-4 sm:p-5 mb-6 shadow-lg">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 relative">
+                {steps.map((step) => {
+                  const isCompleted = step.number < currentStep || (step.number === 1 && code.length >= 10 && currentStep > 1) || (step.number === 2 && title.length >= 3 && currentStep > 2);
+                  const isCurrent = step.number === currentStep;
+
+                  return (
+                    <button
+                      key={step.number}
+                      type="button"
+                      onClick={() => handleStepClick(step.number)}
+                      className={`flex flex-col sm:flex-row items-center sm:items-center gap-2.5 p-3 rounded-xl transition-all duration-200 text-left text-xs sm:text-sm cursor-pointer select-none ${
+                        isCurrent
+                          ? 'bg-blue-600/15 border border-blue-500/40 text-white shadow-md ring-1 ring-blue-500/20'
+                          : isCompleted
+                          ? 'bg-gray-900/40 border border-emerald-500/20 text-gray-300 hover:bg-gray-700/50'
+                          : 'bg-gray-900/20 border border-gray-700/40 text-gray-400 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <div
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-transform duration-200 ${
+                          isCurrent
+                            ? 'bg-blue-600 text-white ring-4 ring-blue-500/20 scale-105'
+                            : isCompleted
+                            ? 'bg-emerald-500 text-gray-950 font-extrabold'
+                            : 'bg-gray-700 text-gray-400'
+                        }`}
+                      >
+                        {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : step.number}
+                      </div>
+                      <div className="min-w-0 text-center sm:text-left">
+                        <div className="font-semibold text-xs sm:text-sm text-white truncate">
+                          {step.title}
+                        </div>
+                        <p className="text-[11px] text-gray-400 truncate hidden sm:block mt-0.5">
+                          {step.subtitle}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Progress Bar under Stepper */}
+              <div className="w-full bg-gray-700/50 h-1.5 rounded-full mt-4 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-400 h-full transition-all duration-300 ease-out rounded-full"
+                  style={{ width: `${(currentStep / 3) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* ── STEP CONTENT AREA ── */}
+            <div className="bg-gray-800/60 rounded-2xl border border-gray-700/80 shadow-xl overflow-hidden mb-6">
+
+              {/* STEP 1: CODE & VISIBILITY */}
+              {currentStep === 1 && (
+                <div className="p-5 sm:p-7 space-y-6 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-gray-700/60 pb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <Code className="w-5 h-5 text-blue-400" />
+                        Step 1: Code &amp; Visibility
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Paste or write your source code first. Code is required to move forward.
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      Step 1 of 3
+                    </span>
+                  </div>
+
+                  {/* Visibility Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">
+                      Snippet Visibility <span className="text-red-400">*</span>
+                    </label>
+                    {isPro ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsPublic(true)}
+                          className={`p-4 rounded-xl border flex items-start gap-3 text-left transition-all cursor-pointer ${
+                            isPublic
+                              ? 'bg-blue-600/15 border-blue-500 text-white ring-1 ring-blue-500/30'
+                              : 'bg-gray-900/50 border-gray-700 text-gray-400 hover:bg-gray-700/40'
+                          }`}
+                        >
+                          <Globe className={`w-5 h-5 mt-0.5 shrink-0 ${isPublic ? 'text-emerald-400' : 'text-gray-500'}`} />
+                          <div>
+                            <div className="font-semibold text-sm text-white">Public Snippet</div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Anyone on SnipForge can view, search, and bookmark this snippet.
+                            </p>
+                          </div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsPublic(false)}
+                          className={`p-4 rounded-xl border flex items-start gap-3 text-left transition-all cursor-pointer ${
+                            !isPublic
+                              ? 'bg-amber-500/15 border-amber-500 text-white ring-1 ring-amber-500/30'
+                              : 'bg-gray-900/50 border-gray-700 text-gray-400 hover:bg-gray-700/40'
+                          }`}
+                        >
+                          <Lock className={`w-5 h-5 mt-0.5 shrink-0 ${!isPublic ? 'text-amber-400' : 'text-gray-500'}`} />
+                          <div>
+                            <div className="font-semibold text-sm text-white flex items-center gap-1.5">
+                              Private Snippet <ProBadge size="xs" />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              Only you can view and access this snippet. Encrypted storage.
+                            </p>
+                          </div>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-900/60 p-4 border border-gray-700 rounded-xl flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <Globe className="w-5 h-5 text-emerald-400 shrink-0" />
+                          <div>
+                            <div className="font-semibold text-sm text-white">Public Snippet</div>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              FREE tier accounts create Public snippets. Upgrade to PRO to create Private snippets.
+                            </p>
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 bg-gray-800 border border-gray-700 text-gray-400 text-xs font-semibold rounded-full shrink-0">
+                          Public Only
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Source Code Editor */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label htmlFor="code" className="block text-sm font-medium text-gray-200">
+                        Source Code <span className="text-red-400">*</span>
+                      </label>
+                      <span className="text-xs text-gray-400 font-mono">
+                        {code.length} chars {code.length >= 10 ? '✓' : '(min 10 required)'}
+                      </span>
+                    </div>
+                    <textarea
+                      id="code"
+                      value={code}
+                      onChange={(e) => {
+                        setCode(e.target.value);
+                        if (errors.code) setErrors({ ...errors, code: '' });
+                      }}
+                      rows={16}
+                      spellCheck={false}
+                      className={`w-full px-5 py-4 bg-gray-950 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm text-gray-100 placeholder-gray-600 resize-y overflow-x-auto whitespace-pre leading-relaxed min-h-[400px] ${
+                        errors.code ? 'border-red-500 ring-1 ring-red-500/50' : 'border-gray-700'
+                      }`}
+                      placeholder="// Paste or write your source code here...\n// Minimum 10 characters required.\n\nfunction example() {\n  console.log('Hello, SnipForge!');\n}"
+                    />
+                    {errors.code && (
+                      <p className="mt-2 text-xs text-red-400 font-medium flex items-center gap-1">
+                        ⚠ {errors.code}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 2: SNIPPET DETAILS */}
+              {currentStep === 2 && (
+                <div className="p-5 sm:p-7 space-y-6 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-gray-700/60 pb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-blue-400" />
+                        Step 2: Snippet Details
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Add metadata so other developers (and future you) can easily search and discover this snippet.
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      Step 2 of 3
+                    </span>
+                  </div>
+
+                  {/* Metadata Form Grid */}
+                  <div className="space-y-5">
+                    {/* Row 1: Title & Language */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Title */}
+                      <div>
+                        <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1.5">
+                          Title <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          id="title"
+                          type="text"
+                          value={title}
+                          onChange={(e) => {
+                            setTitle(e.target.value);
+                            if (errors.title) setErrors({ ...errors, title: '' });
+                          }}
+                          className={`w-full px-4 py-2.5 bg-gray-900 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
+                            errors.title ? 'border-red-500' : 'border-gray-700'
+                          }`}
+                          placeholder="e.g., JWT Authentication Middleware"
+                        />
+                        {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title}</p>}
+                      </div>
+
+                      {/* Language Combobox */}
+                      <div className="relative" onClick={(e) => e.stopPropagation()}>
+                        <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-1.5">
+                          Language <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                          id="language"
+                          type="text"
+                          placeholder="Type to search or enter custom language..."
+                          value={langSearchInput}
+                          onChange={(e) => {
+                            setLangSearchInput(e.target.value);
+                            setLanguage(e.target.value);
+                            setShowLangSuggestions(true);
+                            if (errors.language) setErrors({ ...errors, language: '' });
+                          }}
+                          onFocus={() => setShowLangSuggestions(true)}
+                          className={`w-full px-4 py-2.5 bg-gray-900 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
+                            errors.language ? 'border-red-500' : 'border-gray-700'
+                          }`}
+                        />
+                        {showLangSuggestions && (
+                          <div className="absolute left-0 right-0 mt-1.5 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-50">
+                            {filteredLanguages.map((lang) => (
+                              <button
+                                key={lang._id}
+                                type="button"
+                                onClick={() => {
+                                  setLanguage(lang.name);
+                                  setLangSearchInput(lang.name);
+                                  setShowLangSuggestions(false);
+                                  if (errors.language) setErrors({ ...errors, language: '' });
+                                }}
+                                className="w-full text-left px-4 py-2.5 hover:bg-gray-700/80 transition-colors text-white text-sm border-b border-gray-700/50 last:border-0 cursor-pointer flex items-center justify-between"
+                              >
+                                <span>{lang.name}</span>
+                                {lang.icon && (
+                                  <span className="text-[10px] font-mono text-gray-400 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-700">
+                                    {lang.icon}
+                                  </span>
+                                )}
+                              </button>
+                            ))}
+                            {langSearchInput.trim() && !hasExactLanguageMatch && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setLanguage(langSearchInput.trim());
+                                  setLangSearchInput(langSearchInput.trim());
+                                  setShowLangSuggestions(false);
+                                  if (errors.language) setErrors({ ...errors, language: '' });
+                                }}
+                                className="w-full text-left px-4 py-2.5 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 text-sm font-medium border-t border-gray-700/60 cursor-pointer flex items-center gap-2"
+                              >
+                                <Plus className="w-4 h-4 text-blue-400 shrink-0" />
+                                <span>Add custom language: <strong className="text-white">"{langSearchInput.trim()}"</strong></span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {errors.language && <p className="mt-1 text-xs text-red-400">{errors.language}</p>}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Visibility Read-only Summary */}
+                    <div className="bg-gray-900/60 p-4 border border-gray-700 rounded-xl flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        {isPublic ? (
+                          <Globe className="w-4 h-4 text-emerald-400 shrink-0" />
+                        ) : (
+                          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                        )}
+                        <div>
+                          <span className="text-xs text-gray-400 block">Selected Visibility (Step 1)</span>
+                          <span className="text-sm font-semibold text-white">
+                            {isPublic ? 'Public Snippet' : 'Private Snippet (PRO)'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(1)}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-medium underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" /> Change in Step 1
+                      </button>
+                    </div>
+
+                    {/* Row 3: Tags (Full Width) */}
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                        Tags <span className="text-xs text-gray-500 font-normal">(Press Enter or comma to add)</span>
+                      </label>
+                      {selectedTags.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2.5">
+                          {selectedTags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/15 text-blue-300 text-xs rounded-full border border-blue-500/30 font-medium"
+                            >
+                              #{tag}
+                              <button
+                                type="button"
+                                onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
+                                className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-blue-400 hover:text-white hover:bg-blue-600/50 transition-colors font-bold"
+                                aria-label={`Remove tag ${tag}`}
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <input
+                        type="text"
+                        placeholder="Type to search existing tags or add custom tags..."
+                        value={tagInput}
+                        onChange={(e) => {
+                          setTagInput(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ',') {
+                            e.preventDefault();
+                            if (cleanedTagInput && !selectedTags.includes(cleanedTagInput)) {
+                              setSelectedTags([...selectedTags, cleanedTagInput]);
+                              setTagInput('');
+                              setSuggestedTags([]);
+                            }
+                          }
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-600 text-sm"
+                      />
+                      {showSuggestions && cleanedTagInput && (
+                        <div className="absolute left-0 right-0 mt-1.5 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-h-52 overflow-y-auto z-50">
+                          {suggestedTags.map((tag) => (
+                            <button
+                              key={tag._id}
+                              type="button"
+                              onClick={() => {
+                                const tagName = tag.name.toLowerCase();
+                                if (!selectedTags.includes(tagName)) {
+                                  setSelectedTags([...selectedTags, tagName]);
+                                }
+                                setTagInput('');
+                                setSuggestedTags([]);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-700/80 transition-colors border-b border-gray-700/50 last:border-0 cursor-pointer text-sm flex items-center justify-between"
+                            >
+                              <span className="font-semibold text-white">#{tag.name}</span>
+                              <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Existing Tag</span>
+                            </button>
+                          ))}
+                          {!hasExactTagMatch && !selectedTags.includes(cleanedTagInput) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedTags([...selectedTags, cleanedTagInput]);
+                                setTagInput('');
+                                setSuggestedTags([]);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 text-sm font-medium border-t border-gray-700/60 cursor-pointer flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4 text-blue-400 shrink-0" />
+                              <span>Add new tag: <strong className="text-white">#{cleanedTagInput}</strong></span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Row 4: Description (Full Width) */}
+                    <div>
+                      <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1.5">
+                        Description <span className="text-xs text-gray-500 font-normal">(Optional)</span>
+                      </label>
+                      <textarea
+                        id="description"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={3}
+                        className="w-full px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm resize-y"
+                        placeholder="Brief explanation of what this snippet does and how to use it..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: REVIEW & PUBLISH */}
+              {currentStep === 3 && (
+                <div className="p-5 sm:p-7 space-y-6 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between border-b border-gray-700/60 pb-4">
+                    <div>
+                      <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                        Step 3: Review &amp; {isEditMode ? 'Save Changes' : 'Publish'}
+                      </h2>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Review all details below before final submission.
+                      </p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Final Step
+                    </span>
+                  </div>
+
+                  {/* Review Card 1: Snippet Metadata Summary */}
+                  <div className="bg-gray-900/70 border border-gray-700 rounded-xl p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                        Snippet Summary
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(2)}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer"
+                      >
+                        <Edit3 className="w-3 h-3" /> Edit Details
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-xs text-gray-500 block">Title</span>
+                        <span className="font-semibold text-white truncate block">{title || '(No title)'}</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 block">Language</span>
+                        <span className="font-semibold text-blue-400 uppercase text-xs inline-block mt-0.5 px-2 py-0.5 bg-blue-500/10 rounded-md border border-blue-500/20">
+                          {language || '(Not set)'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 block">Visibility</span>
+                        <span className="font-semibold text-white flex items-center gap-1 mt-0.5">
+                          {isPublic ? (
+                            <>
+                              <Globe className="w-3.5 h-3.5 text-emerald-400" /> Public
+                            </>
+                          ) : (
+                            <>
+                              <Lock className="w-3.5 h-3.5 text-amber-400" /> Private (PRO)
+                            </>
+                          )}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-gray-500 block">Tags</span>
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {selectedTags.length > 0 ? (
+                            selectedTags.map((tag) => (
+                              <span key={tag} className="text-[11px] text-blue-300 bg-blue-600/15 px-2 py-0.5 rounded-full border border-blue-500/30">
+                                #{tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-600">None</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {description && (
+                      <div className="pt-2 border-t border-gray-800/80">
+                        <span className="text-xs text-gray-500 block mb-1">Description</span>
+                        <p className="text-xs text-gray-300 bg-gray-950/40 p-3 rounded-lg border border-gray-800">
+                          {description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Review Card 2: Readonly Code Preview */}
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
+                    <div className="bg-gray-900/90 px-4 py-2.5 border-b border-gray-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code className="w-4 h-4 text-blue-400" />
+                        <span className="text-xs font-mono font-medium text-gray-300">Code Preview</span>
+                        <span className="text-[10px] text-gray-500 font-mono">({code.split('\n').length} lines)</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={copyToClipboard}
+                          className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          {copiedCode ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedCode ? 'Copied' : 'Copy Code'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep(1)}
+                          className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <Edit3 className="w-3 h-3" /> Edit Code
+                        </button>
+                      </div>
+                    </div>
+                    <pre className="p-4 text-xs font-mono text-gray-100 overflow-x-auto max-h-80 leading-relaxed whitespace-pre">
+                      {code}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* STICKY BOTTOM NAVIGATION BAR */}
+            <div className="fixed bottom-0 left-0 right-0 z-30 bg-gray-900/95 backdrop-blur-md border-t border-gray-700/80 shadow-2xl shadow-black/60 pr-16 sm:pr-24">
+              <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3">
+                {/* Left: Previous Button or Cancel */}
+                <div className="flex items-center gap-2">
+                  {currentStep > 1 ? (
+                    <button
+                      type="button"
+                      onClick={handlePrevStep}
+                      className="px-4 py-2 text-sm text-gray-300 hover:text-white border border-gray-700 hover:border-gray-500 rounded-xl font-medium cursor-pointer transition-all flex items-center gap-1.5 min-h-[44px] bg-gray-800/80"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Previous</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => navigate('/snippet-feed')}
+                      className="px-4 py-2 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-xl font-medium cursor-pointer transition-all min-h-[44px]"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                {/* Right: Next Step or Publish/Save Button */}
+                <div className="flex items-center gap-3">
+                  {currentStep < 3 ? (
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold text-sm transition-all cursor-pointer active:scale-95 shadow-md shadow-blue-600/25 flex items-center gap-2 min-h-[44px]"
+                    >
+                      <span>Next Step</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleSubmit()}
+                      className="px-8 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-sm transition-all cursor-pointer active:scale-95 shadow-md shadow-emerald-600/30 flex items-center gap-2 min-h-[44px]"
+                    >
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>{isEditMode ? 'Save Changes' : 'Publish Snippet'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
       </div>
-      <UpgradeModal isOpen={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} />
     </Layout>
-  );
+);
 }
 
 export default CreateSnippet;

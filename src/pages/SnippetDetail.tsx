@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil, Globe, Lock } from 'lucide-react';
+import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil, Globe, Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
 import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB } from '../services/snippetService';
+import { getSimilarSnippets, type RecommendedSnippet } from '../services/recommendationService';
 import toast from 'react-hot-toast';
 
 interface Comment {
@@ -40,9 +41,10 @@ interface SnippetDetailProps {
     isLiked?: boolean;
     bookmarksCount?: number;
   };
+  onSelectSnippet?: (s: any) => void;
 }
 
-export function SnippetDetail({ snippet }: SnippetDetailProps) {
+export function SnippetDetail({ snippet, onSelectSnippet }: SnippetDetailProps) {
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [likesCount, setLikesCount] = useState(snippet.likes);
@@ -55,11 +57,27 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
   const [commentPagination, setCommentPagination] = useState({ totalPages: 1, totalItems: 0, currentPage: 1 });
   const [loadingComments, setLoadingComments] = useState(false);
 
+  const [similarSnippets, setSimilarSnippets] = useState<RecommendedSnippet[]>([]);
+
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  
+
+  // Fetch similar snippets when active snippet changes
+  useEffect(() => {
+    const loadSimilar = async () => {
+      if (!snippet.id) return;
+      try {
+        const list = await getSimilarSnippets(snippet.id, 4);
+        setSimilarSnippets(list);
+      } catch (err) {
+        console.error("Failed to load similar snippets:", err);
+      }
+    };
+    loadSimilar();
+  }, [snippet.id]);
+
   const isOwner = user && user.username && snippet.author?.username === user.username;
 
   const handleCopy = async () => {
@@ -246,15 +264,15 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
   }, [snippet.id]);
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-6 pb-28 sm:pb-24">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-white">{snippet.title}</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5 mb-2">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white tracking-tight break-words">{snippet.title}</h1>
               {snippet.visibility && (
-                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border flex-shrink-0 ${
                   snippet.visibility === 'public'
                     ? 'bg-green-500/10 text-green-400 border-green-500/20'
                     : 'bg-gray-700/50 text-gray-300 border-gray-600'
@@ -264,7 +282,7 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
                 </span>
               )}
             </div>
-            <p className="text-gray-400">{snippet.description}</p>
+            <p className="text-sm sm:text-base text-gray-300 leading-relaxed break-words">{snippet.description}</p>
           </div>
         </div>
 
@@ -273,47 +291,49 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
           <img
             src={snippet.author.avatar}
             alt={snippet.author.name}
-            className="w-12 h-12 rounded-full border-2 border-gray-600"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-gray-600 object-cover flex-shrink-0"
           />
-          <div>
-            <p className="font-semibold text-white">{snippet.author.name}</p>
-            <p className="text-sm text-gray-400">@{snippet.author.username} • {snippet.createdAt}</p>
+          <div className="min-w-0 flex-1">
+            <p className="font-bold text-sm sm:text-base text-white truncate">{snippet.author.name}</p>
+            <p className="text-xs sm:text-sm text-gray-400 truncate">@{snippet.author.username} • {snippet.createdAt}</p>
           </div>
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <span className="px-3 py-1 bg-blue-600 text-white text-sm rounded-full">
+        <div className="flex flex-wrap gap-2 mb-5">
+          <span className="px-3 py-1 bg-blue-600 text-white text-xs sm:text-sm font-semibold rounded-full shadow-sm">
             {snippet.language}
           </span>
           {snippet.tags.map((tag) => (
-            <span key={tag} className="px-3 py-1 bg-gray-700 text-gray-300 text-sm rounded-full">
+            <span key={tag} className="px-3 py-1 bg-gray-800 border border-gray-700 text-gray-300 text-xs sm:text-sm font-medium rounded-full">
               #{tag}
             </span>
           ))}
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <button
+            type="button"
             onClick={handleToggleLike}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors border ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all border min-h-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
               isLiked
-                ? 'bg-red-600/10 text-red-400 border-red-500/20 hover:bg-red-600/20'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-transparent'
+                ? 'bg-red-600/15 text-red-400 border-red-500/30 font-bold shadow-md shadow-red-500/10'
+                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
             }`}
           >
             <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-400' : ''}`} />
-            <span>{likesCount}</span>
+            <span className="text-sm font-semibold">{likesCount}</span>
           </button>
           <button
+            type="button"
             onClick={handleToggleBookmark}
             title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
             aria-label={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
-            className={`flex items-center justify-center p-2.5 rounded-lg transition-colors border ${
+            className={`flex items-center justify-center p-2.5 rounded-xl transition-all border min-h-[44px] min-w-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
               isBookmarked
-                ? 'bg-blue-600/10 text-blue-400 border-blue-500/20 hover:bg-blue-600/20'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600 border-transparent'
+                ? 'bg-blue-600/15 text-blue-400 border-blue-500/30 font-bold shadow-md shadow-blue-600/10'
+                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
             }`}
           >
             <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
@@ -322,13 +342,14 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
       </div>
 
       {/* Code Block */}
-      <div className="mb-8">
-        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-900 border-b border-gray-700">
-            <span className="text-sm text-gray-400">{snippet.language}</span>
+      <div className="mb-8 w-full min-w-0">
+        <div className="bg-gray-800/90 rounded-xl border border-gray-700/80 overflow-hidden shadow-lg w-full min-w-0">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-gray-900 border-b border-gray-700">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{snippet.language}</span>
             <button
+              type="button"
               onClick={handleCopy}
-              className="flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-300 hover:text-white transition-colors min-h-[36px] px-2.5 py-1 rounded-lg hover:bg-gray-800 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               {copied ? (
                 <>
@@ -338,19 +359,19 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
               ) : (
                 <>
                   <Copy className="w-4 h-4" />
-                  <span>Copy</span>
+                  <span>Copy Code</span>
                 </>
               )}
             </button>
           </div>
-          <pre className="p-4 overflow-x-auto custom-code-scrollbar">
-            <code className="text-sm text-gray-100">{snippet.code}</code>
-          </pre>
+          <div className="overflow-x-auto custom-scrollbar p-4 bg-gray-950 font-mono text-xs sm:text-sm text-gray-200 w-full min-w-0">
+            <pre className="whitespace-pre">{snippet.code}</pre>
+          </div>
         </div>
       </div>
 
       {/* Comments Section */}
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
+      <div className="bg-gray-800 rounded-xl border border-gray-700/80 p-4 sm:p-6 w-full min-w-0">
         <div className="flex items-center gap-2 mb-6">
           <MessageCircle className="w-5 h-5 text-gray-400" />
           <h2 className="text-xl font-bold text-white">
@@ -648,6 +669,82 @@ export function SnippetDetail({ snippet }: SnippetDetailProps) {
           </div>
         )}
       </div>
+
+      {/* AI Recommended Similar Snippets Section */}
+      {similarSnippets.length > 0 && (
+        <div className="mt-10 pt-8 border-t border-gray-700/80 pb-24">
+          <div className="flex items-center justify-between gap-2 mb-5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-sm shadow-purple-500/10">
+                <Sparkles className="w-4 h-4 fill-purple-400/20 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white leading-tight flex items-center gap-2">
+                  <span>Similar Snippets You Might Like</span>
+                  <span className="px-2 py-0.5 bg-purple-500/10 border border-purple-500/20 text-purple-300 text-[10px] font-semibold rounded-full">
+                    AI Matches
+                  </span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">Recommended based on language, category & tag similarity</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {similarSnippets.map((sim) => (
+              <button
+                key={sim.id}
+                type="button"
+                onClick={() => onSelectSnippet?.(sim)}
+                className="text-left p-4 bg-gray-800/60 hover:bg-gray-800 border border-gray-700/80 hover:border-purple-500/50 rounded-xl transition-all duration-200 hover:-translate-y-0.5 shadow-sm hover:shadow-lg hover:shadow-purple-500/5 flex flex-col justify-between h-full group cursor-pointer"
+              >
+                <div>
+                  {/* Top Bar: Language Badge & Creation Date */}
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="inline-block px-2.5 py-0.5 bg-blue-600/15 border border-blue-500/30 text-blue-400 text-[11px] font-bold rounded-md uppercase tracking-wider">
+                      {sim.language}
+                    </span>
+                    <span className="text-[11px] text-gray-400 font-medium">{sim.createdAt}</span>
+                  </div>
+
+                  {/* Title */}
+                  <h4 className="font-bold text-white text-sm line-clamp-1 group-hover:text-purple-300 transition-colors">
+                    {sim.title}
+                  </h4>
+
+                  {/* Description with guaranteed uniform height */}
+                  <p className="text-xs text-gray-400 line-clamp-2 mt-1.5 min-h-[32px] leading-relaxed">
+                    {sim.description || "No description provided for this snippet."}
+                  </p>
+                </div>
+
+                {/* Bottom Footer: Stats & Author */}
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-700/50 text-gray-400 text-[11px]">
+                  <div className="flex items-center gap-1.5">
+                    <img
+                      src={sim.author.avatar}
+                      alt={sim.author.name}
+                      className="w-4 h-4 rounded-full border border-gray-600"
+                    />
+                    <span className="truncate max-w-[100px] text-gray-300">{sim.author.name}</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="flex items-center gap-1 hover:text-red-400 transition-colors">
+                      <Heart className="w-3 h-3 text-gray-400" />
+                      {sim.likes}
+                    </span>
+                    <span className="flex items-center gap-1 hover:text-blue-400 transition-colors">
+                      <MessageCircle className="w-3 h-3 text-gray-400" />
+                      {sim.comments}
+                    </span>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
