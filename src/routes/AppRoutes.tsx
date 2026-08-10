@@ -18,6 +18,7 @@ const CreateSnippet = lazy(() => import("../pages/CreateSnippet").then(m => ({ d
 const Subscription = lazy(() => import("../pages/Subscription").then(m => ({ default: m.Subscription })));
 const Pricing = lazy(() => import("../pages/Pricing").then(m => ({ default: m.Pricing })));
 const Bookmarks = lazy(() => import("../pages/Bookmarks").then(m => ({ default: m.Bookmarks })));
+const Notifications = lazy(() => import("../pages/Notifications").then(m => ({ default: m.Notifications })));
 const AdminDashboard = lazy(() => import("../components/admin/AdminDashboard").then(m => ({ default: m.AdminDashboard })));
 const ManageLanguages = lazy(() => import("../components/admin/ManageLanguages").then(m => ({ default: m.ManageLanguages })));
 const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m => ({ default: m.ManageTags })));
@@ -56,6 +57,7 @@ const AppRoutes = () => {
           <Route path="/profile" element={<Profile />} />
           <Route path="/create" element={<CreateSnippet />} />
           <Route path="/edit/:id" element={<CreateSnippet />} />
+          <Route path="/notifications" element={<Notifications />} />
           
           <Route element={<NormalUserRoute />}>
             <Route path="/subscription" element={<Subscription />} />

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, Globe, Bookmark, ArrowLeft, Code } from 'lucide-react';
+import { Lock, Globe, Bookmark, ArrowLeft, Code, Camera } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
@@ -648,6 +648,27 @@ export function Profile() {
                   onChange={(e) => setEditPhoneNumber(e.target.value)}
                   className="w-full px-4 py-2 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1.5">Profile Avatar / Photo</label>
+                <div className="flex items-center gap-4 p-3 bg-gray-900 border border-gray-700 rounded-xl">
+                  <img
+                    src={currentUserData?.avatar}
+                    alt="Avatar preview"
+                    className="w-14 h-14 rounded-full object-cover border border-gray-600 shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={handleAvatarClick}
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Upload Avatar Image</span>
+                    </button>
+                    <p className="text-[11px] text-gray-400 mt-1">PNG, JPG, WEBP or GIF up to 2MB</p>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Bio</label>

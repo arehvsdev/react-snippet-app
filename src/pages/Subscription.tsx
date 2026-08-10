@@ -235,65 +235,76 @@ export function Subscription() {
               <h2 className="text-lg font-bold text-white">Payment History</h2>
             </div>
 
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-                <span className="ml-2 text-sm text-gray-400">Loading payment history...</span>
-              </div>
-            ) : payments.length === 0 ? (
-              /* Friendly Empty State */
-              <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400 bg-gray-900/40 rounded-xl border border-gray-700/50">
-                <AlertCircle className="w-8 h-8 text-gray-500" />
-                <p className="text-sm font-semibold text-gray-300">No payment history found</p>
-                <p className="text-xs text-gray-500">Your past payment transactions will appear here.</p>
-              </div>
-            ) : (
-              /* Simple Table */
-              <div className="overflow-x-auto rounded-xl border border-gray-700">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-900/80 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
-                    <tr>
-                      <th className="px-4 py-3">Date</th>
-                      <th className="px-4 py-3">Plan</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3">Payment ID</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700/60 bg-gray-900/40">
-                    {payments.map((p) => (
-                      <tr key={p._id} className="hover:bg-gray-700/20 transition-colors">
-                        <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
-                          {formatDate(p.createdAt)}
-                        </td>
-                        <td className="px-4 py-3 font-semibold">
-                          {p.plan === "PRO" ? (
-                            <span className="text-amber-300 font-bold">PRO</span>
-                          ) : (
-                            <span className="text-gray-300">FREE</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-white font-medium whitespace-nowrap">
-                          {formatAmount(p.amount)}
-                        </td>
-                        <td className="px-4 py-3 font-semibold whitespace-nowrap">
-                          {p.status === "SUCCESS" ? (
-                            <span className="text-emerald-400">SUCCESS</span>
-                          ) : p.status === "FAILED" ? (
-                            <span className="text-red-400">FAILED</span>
-                          ) : (
-                            <span className="text-amber-400">{p.status}</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-amber-300 font-mono text-xs whitespace-nowrap">
-                          {p.paymentId || "N/A"}
-                        </td>
+            {(() => {
+              const displayPayments = payments.filter((p) => {
+                const st = (p.status || "").toUpperCase();
+                return st === "SUCCESS" || st === "FAILED" || st === "COMPLETED" || st === "PAID" || st === "FAILURE";
+              });
+
+              if (loading) {
+                return (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-sm text-gray-400">Loading payment history...</span>
+                  </div>
+                );
+              }
+
+              if (displayPayments.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center py-10 gap-2 text-gray-400 bg-gray-900/40 rounded-xl border border-gray-700/50">
+                    <AlertCircle className="w-8 h-8 text-gray-500" />
+                    <p className="text-sm font-semibold text-gray-300">No payment history found</p>
+                    <p className="text-xs text-gray-500">Your completed and failed payment transactions will appear here.</p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="overflow-x-auto rounded-xl border border-gray-700">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-gray-900/80 text-xs uppercase tracking-wider text-gray-400 border-b border-gray-700">
+                      <tr>
+                        <th className="px-4 py-3">Date</th>
+                        <th className="px-4 py-3">Plan</th>
+                        <th className="px-4 py-3">Amount</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Payment ID</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-gray-700/60 bg-gray-900/40">
+                      {displayPayments.map((p) => (
+                        <tr key={p._id} className="hover:bg-gray-700/20 transition-colors">
+                          <td className="px-4 py-3 text-gray-300 whitespace-nowrap">
+                            {formatDate(p.createdAt)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold">
+                            {p.plan === "PRO" ? (
+                              <span className="text-amber-300 font-bold">PRO</span>
+                            ) : (
+                              <span className="text-gray-300">FREE</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-white font-medium whitespace-nowrap">
+                            {formatAmount(p.amount)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                            {String(p.status).toUpperCase() === "SUCCESS" || String(p.status).toUpperCase() === "COMPLETED" || String(p.status).toUpperCase() === "PAID" ? (
+                              <span className="text-emerald-400 font-bold">SUCCESS</span>
+                            ) : (
+                              <span className="text-red-400 font-bold">FAILED</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-amber-300 font-mono text-xs whitespace-nowrap">
+                            {p.paymentId || "N/A"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>

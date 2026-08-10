@@ -24,7 +24,7 @@ const normalizeSnippet = (s: any) => {
 
   return {
     ...s,
-    id: String(s._id),
+    id: String(s._id || s.id),
     author: {
       name: authorName,
       avatar: authorAvatar,
@@ -32,6 +32,7 @@ const normalizeSnippet = (s: any) => {
     },
     comments: s.commentsCount || s.comments || 0,
     isBookmarked: s.isBookmarked || false,
+    isLiked: s.isLiked || false,
     bookmarksCount: s.bookmarksCount || 0,
     createdAt: s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' }) : 'Just now'
   };

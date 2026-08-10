@@ -4,6 +4,7 @@ import { Bell, Code2, Home, Plus, BookMarked, Sparkles, CreditCard, LogOut, Sett
 import { useAuth } from '../layouts/AuthContext';
 import { PlanBadge } from '../components/subscription/PlanBadge';
 import { FaqComponent } from '../components/FAQ/FaqComponent';
+import { getUnreadNotificationCount, getNotifications, type AppNotification } from '../services/notificationService';
 
 interface LayoutProps {
   children: ReactNode;
@@ -14,18 +15,42 @@ export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
 
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [recentNotifications, setRecentNotifications] = useState<AppNotification[]>([]);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isFaqOpen, setIsFaqOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notificationMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close profile dropdown & mobile drawer on outside click / escape key
+  useEffect(() => {
+    if (user) {
+      getUnreadNotificationCount()
+        .then(count => setUnreadCount(count))
+        .catch(err => console.error("Failed to load unread notifications count:", err));
+    }
+  }, [user, location.pathname]);
+
+  useEffect(() => {
+    if (user && showNotifications) {
+      getNotifications()
+        .then(res => {
+          setRecentNotifications(res.notifications.slice(0, 4));
+          setUnreadCount(res.unreadCount);
+        })
+        .catch(err => console.error("Failed to load notifications for dropdown:", err));
+    }
+  }, [user, showNotifications]);
+
+  // Close profile dropdown, notification dropdown & mobile drawer on outside click / escape key
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
         setShowProfileMenu(false);
+      }
+      if (notificationMenuRef.current && !notificationMenuRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
       }
     };
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -36,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
       }
     };
 
-    if (showProfileMenu) {
+    if (showProfileMenu || showNotifications) {
       document.addEventListener('mousedown', handleClickOutside);
     }
     document.addEventListener('keydown', handleKeyDown);
@@ -45,7 +70,7 @@ export function Layout({ children }: LayoutProps) {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showProfileMenu]);
+  }, [showProfileMenu, showNotifications]);
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
@@ -70,21 +95,6 @@ export function Layout({ children }: LayoutProps) {
     setShowProfileMenu(false);
     navigate(path);
   };
-
-  const notificationsList = [
-    {
-      id: '1',
-      title: 'Welcome to SnipForge!',
-      message: 'Explore public code snippets, create your own library, and connect with developers.',
-      time: 'Just now'
-    },
-    {
-      id: '2',
-      title: 'System Operational',
-      message: 'All API services and MongoDB database connections are running smoothly.',
-      time: '5m ago'
-    }
-  ];
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -183,52 +193,75 @@ export function Layout({ children }: LayoutProps) {
 
             {/* Right Side Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Notification Dropdown */}
-              <div className="relative">
+              {/* Notification Bell & Dropdown Menu */}
+              <div className="relative" ref={notificationMenuRef}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowNotifications(!showNotifications);
-                    setHasUnread(false);
-                  }}
+                  onClick={() => setShowNotifications(!showNotifications)}
                   className="relative p-2.5 rounded-lg text-gray-300 hover:bg-gray-700/80 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  aria-label="Notifications"
-                  aria-expanded={showNotifications}
+                  aria-label="Toggle Notifications Menu"
+                  title="Notifications"
                 >
                   <Bell className="w-5 h-5" />
-                  {hasUnread && (
-                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-blue-500 rounded-full animate-pulse ring-2 ring-gray-800"></span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1 right-1 px-1.5 py-0.2 rounded-full bg-blue-600 text-white font-extrabold text-[10px] ring-2 ring-gray-800 animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
                   )}
                 </button>
 
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-gray-800 border border-gray-700/80 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute right-0 mt-2 w-80 bg-gray-800 border border-gray-700/80 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="flex items-center justify-between px-4 py-3 bg-gray-900 border-b border-gray-700">
                       <div className="flex items-center gap-2">
                         <Bell className="w-4 h-4 text-blue-400" />
                         <span className="font-bold text-sm text-white">Notifications</span>
                       </div>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-full">
-                        {notificationsList.length} New
-                      </span>
+                      {unreadCount > 0 && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-full">
+                          {unreadCount} Unread
+                        </span>
+                      )}
                     </div>
 
-                    <div className="divide-y divide-gray-700/60 max-h-64 overflow-y-auto">
-                      {notificationsList.map(item => (
-                        <div key={item.id} className="p-3 hover:bg-gray-700/40 transition-colors">
-                          <p className="text-xs font-semibold text-white mb-0.5">{item.title}</p>
-                          <p className="text-xs text-gray-400 leading-relaxed mb-1">{item.message}</p>
-                          <span className="text-[9px] text-gray-500">{item.time}</span>
+                    <div className="divide-y divide-gray-700/60 max-h-72 overflow-y-auto">
+                      {recentNotifications.length === 0 ? (
+                        <div className="p-6 text-center text-xs text-gray-400">
+                          No notifications found.
                         </div>
-                      ))}
+                      ) : (
+                        recentNotifications.map(notif => (
+                          <div
+                            key={notif.id || notif._id}
+                            onClick={() => {
+                              setShowNotifications(false);
+                              navigate('/notifications');
+                            }}
+                            className={`p-3.5 hover:bg-gray-700/50 transition-colors cursor-pointer ${
+                              !notif.isRead ? 'bg-blue-950/20' : ''
+                            }`}
+                          >
+                            <p className={`text-xs mb-0.5 ${!notif.isRead ? 'font-extrabold text-white' : 'font-semibold text-gray-300'}`}>
+                              {notif.title}
+                            </p>
+                            <p className={`text-xs leading-relaxed truncate ${!notif.isRead ? 'font-semibold text-gray-200' : 'text-gray-400'}`}>
+                              {notif.message}
+                            </p>
+                          </div>
+                        ))
+                      )}
                     </div>
 
-                    <div className="p-2.5 bg-gray-900/60 border-t border-gray-700 text-center">
+                    <div className="p-2.5 bg-gray-900 border-t border-gray-700 text-center">
                       <button
-                        onClick={() => setShowNotifications(false)}
-                        className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
+                        type="button"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          navigate('/notifications');
+                        }}
+                        className="text-xs text-blue-400 hover:text-blue-300 font-bold transition-colors cursor-pointer w-full py-1"
                       >
-                        Close
+                        View All Notifications →
                       </button>
                     </div>
                   </div>

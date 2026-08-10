@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Eye, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Sparkles, Code2 } from 'lucide-react';
+import { Heart, MessageCircle, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Sparkles, Code2, Crown, Lock } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';
+import { useAuth } from '../layouts/AuthContext';
 import { getSnippets, getCategories, getLanguages } from '../services/snippetService';
 
 export interface Snippet {
@@ -37,18 +38,20 @@ export interface Snippet {
 }
 
 export function SnippetFeed() {
+  const { user } = useAuth();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  // Advanced Search & Sorting State
+  // Advanced Search & Sorting State (Default: AI Recommendation Score descending)
   const [search, setSearch] = useState('');
   const [language, setLanguage] = useState('');
   const [category, setCategory] = useState('');
   const [tag, setTag] = useState('');
   const [author, setAuthor] = useState('');
-  const [sortBy, setSortBy] = useState('createdAt');
+  const [visibility, setVisibility] = useState('');
+  const [sortBy, setSortBy] = useState('aiRecommendationScore');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -79,13 +82,15 @@ export function SnippetFeed() {
   // Reset page to 1 on filter change (except page change)
   useEffect(() => {
     setPage(1);
-  }, [search, language, category, tag, author, sortBy, sortOrder, activeCategory]);
+  }, [search, language, category, tag, author, visibility, sortBy, sortOrder, activeCategory]);
 
   // Debounced search / recommendation fetch trigger
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       try {
         setLoading(true);
+
+        const currentUserId = user?.id || (user as any)?._id || (user as any)?.uid;
 
         const params: any = {
           page,
@@ -95,13 +100,29 @@ export function SnippetFeed() {
           category: category || activeCategory || undefined,
           language: language || undefined,
           tags: tag || undefined,
+          visibility: visibility || undefined,
+          excludeUserId: currentUserId || undefined,
           author: author || undefined,
           search: search || undefined
         };
 
-        // Fetch live snippets with active filters & sorting (newly created snippets appear at the top)
+        // Fetch live snippets with active filters & sorting
         const data = await getSnippets(params);
-        const snippetList = Array.isArray(data) ? data : ((data as any)?.snippets || []);
+        const rawList = Array.isArray(data) ? data : ((data as any)?.snippets || []);
+
+        // Filter out logged-in user's snippets only when no specific filter is active and user is not PRO
+        const hasActiveFilter = Boolean(activeCategory || category || language || search || tag || author || visibility);
+        const isPro = user?.plan === 'PRO' || (user?.role && (user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'pro'));
+
+        const snippetList = (hasActiveFilter || isPro)
+          ? rawList
+          : rawList.filter((s: any) => {
+              if (!user) return true;
+              const authorId = String(s.createdBy?._id || s.createdBy || s.author?.id || '');
+              const authorUsername = s.author?.username;
+              return authorId !== String(currentUserId) && authorUsername !== user?.username;
+            });
+
         setSnippets(snippetList);
 
         const pag = (data as any)?.pagination;
@@ -124,7 +145,7 @@ export function SnippetFeed() {
     }, 300); // 300ms debounce
 
     return () => clearTimeout(delayDebounce);
-  }, [search, language, category, tag, author, sortBy, sortOrder, page, activeCategory]);
+  }, [search, language, category, tag, author, visibility, sortBy, sortOrder, page, activeCategory, user]);
 
   return (
     <Layout>
@@ -142,11 +163,15 @@ export function SnippetFeed() {
           <div className="h-full flex flex-col overflow-hidden">
             {/* Search Header & Advanced Filter Container */}
             <div className="p-4 border-b border-gray-700/80 bg-gray-800 sticky top-0 z-20 flex flex-col gap-3 shadow-sm">
+              {/* For You Header */}
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold text-white flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-purple-400 fill-purple-400/20" />
-                  <span>Recommended for You</span>
+                  <Sparkles className="w-4 h-4 text-amber-400 fill-amber-400/20" />
+                  <span>For You</span>
                 </h2>
+                <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">
+                  Recommended First
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -211,7 +236,31 @@ export function SnippetFeed() {
                     </div>
                   )}
 
-                  {/* Tag & Author Inputs */}
+                  {/* Visibility Dropdown */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Lock className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Visibility</span>
+                      </span>
+                      {user?.plan === 'PRO' ? (
+                        <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-0.5 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                          <Crown className="w-3 h-3 fill-amber-400 text-amber-400" /> PRO Unlocked
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-400">Public & Own Private</span>
+                      )}
+                    </label>
+                    <select
+                      value={visibility}
+                      onChange={(e) => setVisibility(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                    >
+                      <option value="">All Visibilities</option>
+                      <option value="public">Public Snippets</option>
+                      <option value="private">Private Snippets</option>
+                    </select>
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Tag</label>
@@ -355,6 +404,12 @@ export function SnippetFeed() {
                           {typeof snippet.category === 'object' ? snippet.category.name : 'Category'}
                         </span>
                       )}
+                      {snippet.visibility === 'private' && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-purple-600/20 border border-purple-500/40 text-purple-300 text-[11px] font-extrabold rounded-md uppercase tracking-wider">
+                          <Lock className="w-3 h-3 text-purple-400" />
+                          <span>Private</span>
+                        </span>
+                      )}
                       {(snippet.recommendationScore || snippet.ai?.recommendationScore) ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[10px] font-bold rounded-md ml-auto">
                           <Sparkles className="w-3 h-3 text-amber-400 fill-amber-400/20" />
@@ -366,16 +421,12 @@ export function SnippetFeed() {
                     {/* Stats Footer */}
                     <div className="flex items-center gap-4 text-xs text-gray-400 pt-2 border-t border-gray-700/50">
                       <span className="flex items-center gap-1 font-medium hover:text-red-400 transition-colors">
-                        <Heart className="w-3.5 h-3.5 text-red-500/80" />
+                        <Heart className={`w-3.5 h-3.5 ${snippet.isLiked ? 'fill-current text-red-500' : 'text-red-500/80'}`} />
                         {snippet.likes}
                       </span>
                       <span className="flex items-center gap-1 font-medium hover:text-blue-400 transition-colors">
                         <MessageCircle className="w-3.5 h-3.5 text-blue-500/80" />
                         {snippet.comments}
-                      </span>
-                      <span className="flex items-center gap-1 font-medium hover:text-green-400 transition-colors">
-                        <Eye className="w-3.5 h-3.5 text-green-500/80" />
-                        {snippet.views}
                       </span>
                     </div>
                   </button>
@@ -448,7 +499,15 @@ export function SnippetFeed() {
       {/* Detail View */}
         <div id="snippet-detail-container" className="flex-1 min-w-0 min-h-0 w-full bg-gray-900 h-auto lg:h-full lg:overflow-y-auto custom-scrollbar">
           {selectedSnippet ? (
-            <SnippetDetail snippet={selectedSnippet} onSelectSnippet={setSelectedSnippet} />
+            <SnippetDetail
+              snippet={selectedSnippet}
+              onSelectSnippet={(updated) => {
+                setSelectedSnippet(updated);
+                if (updated && updated.id) {
+                  setSnippets(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
+                }
+              }}
+            />
           ) : (
             <div className="flex items-center justify-center h-full min-h-[400px]">
               <div className="text-center p-6">

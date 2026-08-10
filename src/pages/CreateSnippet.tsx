@@ -34,8 +34,8 @@ import toast from 'react-hot-toast';
 
 /**
  * 3-Step Wizard for Creating and Editing Code Snippets:
- * Step 1: Code & Visibility
- * Step 2: Snippet Details
+ * Step 1: Title, Code & Visibility
+ * Step 2: Language, Tags & Description
  * Step 3: Review & Publish
  */
 export function CreateSnippet() {
@@ -145,6 +145,9 @@ export function CreateSnippet() {
   // Step Validation Helpers
   const validateStep1 = () => {
     const newErrors: { [key: string]: string } = {};
+    if (!title || title.trim().length < 3) {
+      newErrors.title = 'Title must be at least 3 characters';
+    }
     if (!code || code.trim().length < 10) {
       newErrors.code = 'Code must be at least 10 characters';
     }
@@ -154,9 +157,6 @@ export function CreateSnippet() {
 
   const validateStep2 = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!title || title.trim().length < 3) {
-      newErrors.title = 'Title must be at least 3 characters';
-    }
     if (!language) {
       newErrors.language = 'Language is required';
     }
@@ -232,14 +232,12 @@ export function CreateSnippet() {
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
 
-    // 1. FREE Plan Limit Check: Maximum 3 snippets
     if (isLimitReached) {
       toast.error('Free tier snippet limit reached (3/3). Upgrade to PRO for unlimited snippets.');
       setIsUpgradeModalOpen(true);
       return;
     }
 
-    // 2. Full validation checks
     const isStep1Valid = validateStep1();
     const isStep2Valid = validateStep2();
 
@@ -289,8 +287,8 @@ export function CreateSnippet() {
   };
 
   const steps = [
-    { number: 1, title: 'Code & Visibility', icon: Code, subtitle: 'Source code & access' },
-    { number: 2, title: 'Snippet Details', icon: FileText, subtitle: 'Title, language & tags' },
+    { number: 1, title: 'Title & Code', icon: Code, subtitle: 'Title, code & access' },
+    { number: 2, title: 'Language & Tags', icon: FileText, subtitle: 'Language, tags & summary' },
     { number: 3, title: 'Review & Publish', icon: CheckCircle2, subtitle: 'Verify & save' }
   ];
 
@@ -436,7 +434,7 @@ export function CreateSnippet() {
             <div className="bg-gray-800/80 rounded-2xl border border-gray-700/80 p-4 sm:p-5 mb-6 shadow-lg">
               <div className="grid grid-cols-3 gap-2 sm:gap-4 relative">
                 {steps.map((step) => {
-                  const isCompleted = step.number < currentStep || (step.number === 1 && code.length >= 10 && currentStep > 1) || (step.number === 2 && title.length >= 3 && currentStep > 2);
+                  const isCompleted = step.number < currentStep || (step.number === 1 && title.length >= 3 && code.length >= 10 && currentStep > 1) || (step.number === 2 && language.length > 0 && currentStep > 2);
                   const isCurrent = step.number === currentStep;
 
                   return (
@@ -488,22 +486,43 @@ export function CreateSnippet() {
             {/* ── STEP CONTENT AREA ── */}
             <div className="bg-gray-800/60 rounded-2xl border border-gray-700/80 shadow-xl overflow-hidden mb-6">
 
-              {/* STEP 1: CODE & VISIBILITY */}
+              {/* STEP 1: TITLE, CODE & VISIBILITY */}
               {currentStep === 1 && (
                 <div className="p-5 sm:p-7 space-y-6 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between border-b border-gray-700/60 pb-4">
                     <div>
                       <h2 className="text-lg font-bold text-white flex items-center gap-2">
                         <Code className="w-5 h-5 text-blue-400" />
-                        Step 1: Code &amp; Visibility
+                        Step 1: Title, Code &amp; Visibility
                       </h2>
                       <p className="text-xs text-gray-400 mt-1">
-                        Paste or write your source code first. Code is required to move forward.
+                        Provide a title, write your source code, and set visibility access.
                       </p>
                     </div>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       Step 1 of 3
                     </span>
+                  </div>
+
+                  {/* Title Field (Moved into Step 1) */}
+                  <div>
+                    <label htmlFor="title" className="block text-sm font-medium text-gray-200 mb-1.5">
+                      Snippet Title <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={title}
+                      onChange={(e) => {
+                        setTitle(e.target.value);
+                        if (errors.title) setErrors({ ...errors, title: '' });
+                      }}
+                      className={`w-full px-4 py-2.5 bg-gray-950 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
+                        errors.title ? 'border-red-500' : 'border-gray-700'
+                      }`}
+                      placeholder="e.g., Express JWT Authentication Middleware"
+                    />
+                    {errors.title && <p className="mt-1 text-xs text-red-400 font-medium">⚠ {errors.title}</p>}
                   </div>
 
                   {/* Visibility Selector */}
@@ -585,9 +604,9 @@ export function CreateSnippet() {
                         setCode(e.target.value);
                         if (errors.code) setErrors({ ...errors, code: '' });
                       }}
-                      rows={16}
+                      rows={14}
                       spellCheck={false}
-                      className={`w-full px-5 py-4 bg-gray-950 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm text-gray-100 placeholder-gray-600 resize-y overflow-x-auto whitespace-pre leading-relaxed min-h-[400px] ${
+                      className={`w-full px-5 py-4 bg-gray-950 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm text-gray-100 placeholder-gray-600 resize-y overflow-x-auto whitespace-pre leading-relaxed min-h-[350px] ${
                         errors.code ? 'border-red-500 ring-1 ring-red-500/50' : 'border-gray-700'
                       }`}
                       placeholder="// Paste or write your source code here...\n// Minimum 10 characters required.\n\nfunction example() {\n  console.log('Hello, SnipForge!');\n}"
@@ -601,17 +620,17 @@ export function CreateSnippet() {
                 </div>
               )}
 
-              {/* STEP 2: SNIPPET DETAILS */}
+              {/* STEP 2: LANGUAGE & TAGS */}
               {currentStep === 2 && (
                 <div className="p-5 sm:p-7 space-y-6 animate-in fade-in duration-200">
                   <div className="flex items-center justify-between border-b border-gray-700/60 pb-4">
                     <div>
                       <h2 className="text-lg font-bold text-white flex items-center gap-2">
                         <FileText className="w-5 h-5 text-blue-400" />
-                        Step 2: Snippet Details
+                        Step 2: Language, Tags &amp; Description
                       </h2>
                       <p className="text-xs text-gray-400 mt-1">
-                        Add metadata so other developers (and future you) can easily search and discover this snippet.
+                        Select the programming language and add tags for categorization.
                       </p>
                     </div>
                     <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
@@ -619,120 +638,86 @@ export function CreateSnippet() {
                     </span>
                   </div>
 
-                  {/* Metadata Form Grid */}
                   <div className="space-y-5">
-                    {/* Row 1: Title & Language */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Title */}
-                      <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-300 mb-1.5">
-                          Title <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                          id="title"
-                          type="text"
-                          value={title}
-                          onChange={(e) => {
-                            setTitle(e.target.value);
-                            if (errors.title) setErrors({ ...errors, title: '' });
-                          }}
-                          className={`w-full px-4 py-2.5 bg-gray-900 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
-                            errors.title ? 'border-red-500' : 'border-gray-700'
-                          }`}
-                          placeholder="e.g., JWT Authentication Middleware"
-                        />
-                        {errors.title && <p className="mt-1 text-xs text-red-400">{errors.title}</p>}
-                      </div>
-
-                      {/* Language Combobox */}
-                      <div className="relative" onClick={(e) => e.stopPropagation()}>
-                        <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-1.5">
-                          Language <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                          id="language"
-                          type="text"
-                          placeholder="Type to search or enter custom language..."
-                          value={langSearchInput}
-                          onChange={(e) => {
-                            setLangSearchInput(e.target.value);
-                            setLanguage(e.target.value);
-                            setShowLangSuggestions(true);
-                            if (errors.language) setErrors({ ...errors, language: '' });
-                          }}
-                          onFocus={() => setShowLangSuggestions(true)}
-                          className={`w-full px-4 py-2.5 bg-gray-900 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
-                            errors.language ? 'border-red-500' : 'border-gray-700'
-                          }`}
-                        />
-                        {showLangSuggestions && (
-                          <div className="absolute left-0 right-0 mt-1.5 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-50">
-                            {filteredLanguages.map((lang) => (
-                              <button
-                                key={lang._id}
-                                type="button"
-                                onClick={() => {
-                                  setLanguage(lang.name);
-                                  setLangSearchInput(lang.name);
-                                  setShowLangSuggestions(false);
-                                  if (errors.language) setErrors({ ...errors, language: '' });
-                                }}
-                                className="w-full text-left px-4 py-2.5 hover:bg-gray-700/80 transition-colors text-white text-sm border-b border-gray-700/50 last:border-0 cursor-pointer flex items-center justify-between"
-                              >
-                                <span>{lang.name}</span>
-                                {lang.icon && (
-                                  <span className="text-[10px] font-mono text-gray-400 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-700">
-                                    {lang.icon}
-                                  </span>
-                                )}
-                              </button>
-                            ))}
-                            {langSearchInput.trim() && !hasExactLanguageMatch && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setLanguage(langSearchInput.trim());
-                                  setLangSearchInput(langSearchInput.trim());
-                                  setShowLangSuggestions(false);
-                                  if (errors.language) setErrors({ ...errors, language: '' });
-                                }}
-                                className="w-full text-left px-4 py-2.5 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 text-sm font-medium border-t border-gray-700/60 cursor-pointer flex items-center gap-2"
-                              >
-                                <Plus className="w-4 h-4 text-blue-400 shrink-0" />
-                                <span>Add custom language: <strong className="text-white">"{langSearchInput.trim()}"</strong></span>
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {errors.language && <p className="mt-1 text-xs text-red-400">{errors.language}</p>}
-                      </div>
-                    </div>
-
-                    {/* Row 2: Visibility Read-only Summary */}
+                    {/* Title Summary from Step 1 */}
                     <div className="bg-gray-900/60 p-4 border border-gray-700 rounded-xl flex items-center justify-between">
-                      <div className="flex items-center gap-2.5">
-                        {isPublic ? (
-                          <Globe className="w-4 h-4 text-emerald-400 shrink-0" />
-                        ) : (
-                          <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                        )}
-                        <div>
-                          <span className="text-xs text-gray-400 block">Selected Visibility (Step 1)</span>
-                          <span className="text-sm font-semibold text-white">
-                            {isPublic ? 'Public Snippet' : 'Private Snippet (PRO)'}
-                          </span>
-                        </div>
+                      <div>
+                        <span className="text-xs text-gray-400 block">Selected Title (Step 1)</span>
+                        <span className="text-sm font-semibold text-white">{title || '(No title entered)'}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => setCurrentStep(1)}
                         className="text-xs text-blue-400 hover:text-blue-300 font-medium underline flex items-center gap-1 cursor-pointer"
                       >
-                        <Edit3 className="w-3 h-3" /> Change in Step 1
+                        <Edit3 className="w-3 h-3" /> Edit in Step 1
                       </button>
                     </div>
 
-                    {/* Row 3: Tags (Full Width) */}
+                    {/* Language Combobox */}
+                    <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      <label htmlFor="language" className="block text-sm font-medium text-gray-300 mb-1.5">
+                        Language <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        id="language"
+                        type="text"
+                        placeholder="Type to search or enter custom language..."
+                        value={langSearchInput}
+                        onChange={(e) => {
+                          setLangSearchInput(e.target.value);
+                          setLanguage(e.target.value);
+                          setShowLangSuggestions(true);
+                          if (errors.language) setErrors({ ...errors, language: '' });
+                        }}
+                        onFocus={() => setShowLangSuggestions(true)}
+                        className={`w-full px-4 py-2.5 bg-gray-900 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-white placeholder-gray-600 text-sm ${
+                          errors.language ? 'border-red-500' : 'border-gray-700'
+                        }`}
+                      />
+                      {showLangSuggestions && (
+                        <div className="absolute left-0 right-0 mt-1.5 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl max-h-56 overflow-y-auto z-50">
+                          {filteredLanguages.map((lang) => (
+                            <button
+                              key={lang._id}
+                              type="button"
+                              onClick={() => {
+                                setLanguage(lang.name);
+                                setLangSearchInput(lang.name);
+                                setShowLangSuggestions(false);
+                                if (errors.language) setErrors({ ...errors, language: '' });
+                              }}
+                              className="w-full text-left px-4 py-2.5 hover:bg-gray-700/80 transition-colors text-white text-sm border-b border-gray-700/50 last:border-0 cursor-pointer flex items-center justify-between"
+                            >
+                              <span>{lang.name}</span>
+                              {lang.icon && (
+                                <span className="text-[10px] font-mono text-gray-400 bg-gray-900 px-1.5 py-0.5 rounded border border-gray-700">
+                                  {lang.icon}
+                                </span>
+                              )}
+                            </button>
+                          ))}
+                          {langSearchInput.trim() && !hasExactLanguageMatch && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLanguage(langSearchInput.trim());
+                                setLangSearchInput(langSearchInput.trim());
+                                setShowLangSuggestions(false);
+                                if (errors.language) setErrors({ ...errors, language: '' });
+                              }}
+                              className="w-full text-left px-4 py-2.5 bg-blue-600/15 hover:bg-blue-600/30 text-blue-400 text-sm font-medium border-t border-gray-700/60 cursor-pointer flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4 text-blue-400 shrink-0" />
+                              <span>Add custom language: <strong className="text-white">"{langSearchInput.trim()}"</strong></span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      {errors.language && <p className="mt-1 text-xs text-red-400">{errors.language}</p>}
+                    </div>
+
+                    {/* Tags Input */}
                     <div className="relative" onClick={(e) => e.stopPropagation()}>
                       <label className="block text-sm font-medium text-gray-300 mb-1.5">
                         Tags <span className="text-xs text-gray-500 font-normal">(Press Enter or comma to add)</span>
@@ -818,7 +803,7 @@ export function CreateSnippet() {
                       )}
                     </div>
 
-                    {/* Row 4: Description (Full Width) */}
+                    {/* Description (Full Width) */}
                     <div>
                       <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-1.5">
                         Description <span className="text-xs text-gray-500 font-normal">(Optional)</span>
@@ -862,10 +847,10 @@ export function CreateSnippet() {
                       </span>
                       <button
                         type="button"
-                        onClick={() => setCurrentStep(2)}
+                        onClick={() => setCurrentStep(1)}
                         className="text-xs text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 cursor-pointer"
                       >
-                        <Edit3 className="w-3 h-3" /> Edit Details
+                        <Edit3 className="w-3 h-3" /> Edit Title &amp; Code
                       </button>
                     </div>
 

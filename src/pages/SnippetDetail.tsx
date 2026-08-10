@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Heart, Bookmark, Copy, Check, MessageCircle, Send, Trash2, Pencil, Globe, Lock, Sparkles } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
-import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB } from '../services/snippetService';
+import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB, toggleCommentLikeInDB, updateCommentInDB, deleteCommentInDB, deleteSnippet } from '../services/snippetService';
 import { getSimilarSnippets, type RecommendedSnippet } from '../services/recommendationService';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 interface Comment {
@@ -42,9 +43,11 @@ interface SnippetDetailProps {
     bookmarksCount?: number;
   };
   onSelectSnippet?: (s: any) => void;
+  onDeleteSuccess?: (snippetId: string) => void;
 }
 
-export function SnippetDetail({ snippet, onSelectSnippet }: SnippetDetailProps) {
+export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: SnippetDetailProps) {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [copied, setCopied] = useState(false);
   const [likesCount, setLikesCount] = useState(snippet.likes);
@@ -78,7 +81,29 @@ export function SnippetDetail({ snippet, onSelectSnippet }: SnippetDetailProps) 
     loadSimilar();
   }, [snippet.id]);
 
-  const isOwner = user && user.username && snippet.author?.username === user.username;
+  const isOwner = Boolean(
+    user && (
+      (user.username && snippet.author?.username && user.username === snippet.author.username) ||
+      (user.fullName && snippet.author?.name && user.fullName === snippet.author.name)
+    )
+  );
+
+  const handleDeleteSnippet = async () => {
+    if (!window.confirm("Are you sure you want to delete this snippet? This action cannot be undone.")) {
+      return;
+    }
+    try {
+      await deleteSnippet(snippet.id);
+      toast.success("Snippet deleted successfully!");
+      if (onDeleteSuccess) {
+        onDeleteSuccess(snippet.id);
+      } else {
+        navigate('/snippet-feed');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete snippet');
+    }
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(snippet.code);
@@ -261,7 +286,7 @@ export function SnippetDetail({ snippet, onSelectSnippet }: SnippetDetailProps) 
     if (snippet?.id) {
       loadComments(1, false);
     }
-  }, [snippet.id]);
+  }, [snippet.id, snippet.isLiked, snippet.likes, snippet.isBookmarked, snippet.bookmarksCount]);
 
   return (
     <div className="w-full min-w-0 px-4 sm:px-6 lg:px-8 py-6 pb-28 sm:pb-24">
@@ -312,32 +337,55 @@ export function SnippetDetail({ snippet, onSelectSnippet }: SnippetDetailProps) 
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleToggleLike}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all border min-h-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-              isLiked
-                ? 'bg-red-600/15 text-red-400 border-red-500/30 font-bold shadow-md shadow-red-500/10'
-                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
-            }`}
-          >
-            <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-400' : ''}`} />
-            <span className="text-sm font-semibold">{likesCount}</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleToggleBookmark}
-            title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
-            aria-label={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
-            className={`flex items-center justify-center p-2.5 rounded-xl transition-all border min-h-[44px] min-w-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
-              isBookmarked
-                ? 'bg-blue-600/15 text-blue-400 border-blue-500/30 font-bold shadow-md shadow-blue-600/10'
-                : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
-            }`}
-          >
-            <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleToggleLike}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all border min-h-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                isLiked
+                  ? 'bg-red-600/15 text-red-400 border-red-500/30 font-bold shadow-md shadow-red-500/10'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              <Heart className={`w-5 h-5 ${isLiked ? 'fill-current text-red-400' : ''}`} />
+              <span className="text-sm font-semibold">{likesCount}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleToggleBookmark}
+              title={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
+              aria-label={isBookmarked ? "Remove Bookmark" : "Save Bookmark"}
+              className={`flex items-center justify-center p-2.5 rounded-xl transition-all border min-h-[44px] min-w-[44px] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
+                isBookmarked
+                  ? 'bg-blue-600/15 text-blue-400 border-blue-500/30 font-bold shadow-md shadow-blue-600/10'
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              <Bookmark className={`w-5 h-5 ${isBookmarked ? 'fill-current text-blue-400' : ''}`} />
+            </button>
+          </div>
+
+          {isOwner && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/edit/${snippet.id}`)}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-gray-800 hover:bg-gray-700 text-blue-400 border border-gray-700 hover:border-gray-600 transition-all cursor-pointer min-h-[44px]"
+              >
+                <Pencil className="w-4 h-4" />
+                <span>Edit Snippet</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteSnippet}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer min-h-[44px]"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Snippet</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
