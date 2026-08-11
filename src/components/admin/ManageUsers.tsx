@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
 import { 
   Search, 
@@ -9,7 +10,8 @@ import {
   UserCheck, 
   UserX, 
   Shield, 
-  ShieldAlert
+  ShieldAlert,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   getAllUsers, 
@@ -18,6 +20,7 @@ import {
   deleteUser 
 } from '../../services/userService';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface UserItem {
   id: string;
@@ -44,6 +47,7 @@ export function ManageUsers() {
   // Modal / Editing states
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+  const [userToDelete, setUserToDelete] = useState<UserItem | null>(null);
   const [editRole, setEditRole] = useState('');
   const [editActive, setEditActive] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -59,7 +63,12 @@ export function ManageUsers() {
         status: statusFilter || undefined
       });
       if (res.success) {
-        setUsers(res.users || res.data || []);
+        const rawUsers = res.users || res.data || [];
+        const formattedUsers = rawUsers.map((u: any) => ({
+          ...u,
+          id: u.id || u._id || String(u._id)
+        }));
+        setUsers(formattedUsers);
         if (res.pagination) {
           setTotalPages(res.pagination.totalPages || 1);
         }
@@ -92,10 +101,15 @@ export function ManageUsers() {
   };
 
   const handleToggleStatus = async (user: UserItem) => {
+    const userId = user.id || (user as any)._id;
+    if (!userId) {
+      toast.error('User ID is missing');
+      return;
+    }
     const nextActive = !user.active;
     try {
       toast.loading(`${nextActive ? 'Enabling' : 'Disabling'} user account...`, { id: 'status-toggle' });
-      await toggleUserStatus(user.id, nextActive);
+      await toggleUserStatus(userId, nextActive);
       toast.success(`Account ${nextActive ? 'enabled' : 'disabled'} successfully`, { id: 'status-toggle' });
       loadUsers();
     } catch (err: any) {
@@ -103,15 +117,19 @@ export function ManageUsers() {
     }
   };
 
-  const handleDeleteUser = async (user: UserItem) => {
-    if (!window.confirm(`Are you sure you want to delete the user "${user.name}"? This will soft-delete their account and disable their login.`)) {
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    const userId = userToDelete.id || (userToDelete as any)._id;
+    if (!userId) {
+      toast.error('User ID is missing');
       return;
     }
 
     try {
-      toast.loading('Deleting user account...', { id: 'delete-user' });
-      await deleteUser(user.id);
-      toast.success('User account soft deleted successfully', { id: 'delete-user' });
+      toast.loading('Deleting user account and data...', { id: 'delete-user' });
+      await deleteUser(userId);
+      toast.success('User account and associated data deleted successfully', { id: 'delete-user' });
+      setUserToDelete(null);
       loadUsers();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete user', { id: 'delete-user' });
@@ -128,16 +146,21 @@ export function ManageUsers() {
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
+    const userId = selectedUser.id || (selectedUser as any)._id;
+    if (!userId) {
+      toast.error('User ID is missing');
+      return;
+    }
 
     try {
       setUpdating(true);
       // Update role if changed
       if (editRole !== selectedUser.role) {
-        await updateUserRole(selectedUser.id, editRole);
+        await updateUserRole(userId, editRole);
       }
       // Update active status if changed
       if (editActive !== selectedUser.active) {
-        await toggleUserStatus(selectedUser.id, editActive);
+        await toggleUserStatus(userId, editActive);
       }
 
       toast.success('User configuration updated successfully');
@@ -157,9 +180,19 @@ export function ManageUsers() {
         <div className="max-w-7xl mx-auto">
           
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Manage Users</h1>
-              <p className="text-gray-400 text-sm mt-1">Review registrations, roles, statuses, and profiles.</p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/admin/dashboard"
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 transition-all flex items-center gap-2 text-sm font-medium shrink-0 cursor-pointer"
+                title="Back to Admin Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Manage Users</h1>
+                <p className="text-gray-400 text-sm">View user directory, assign administrative privileges, and control account statuses</p>
+              </div>
             </div>
           </div>
 
@@ -346,7 +379,7 @@ export function ManageUsers() {
                               </button>
 
                               <button
-                                onClick={() => handleDeleteUser(u)}
+                                onClick={() => setUserToDelete(u)}
                                 disabled={isSelf}
                                 className={`p-2 border border-transparent rounded-lg transition-all ${
                                   isSelf 
@@ -482,6 +515,15 @@ export function ManageUsers() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(userToDelete)}
+        title="Delete User Account"
+        message={`Are you sure you want to delete the user account for "${userToDelete?.name}" (@${userToDelete?.username})? This will permanently delete their account and all their created snippets, comments, and bookmarks.`}
+        confirmText="Delete Account & Data"
+        onConfirm={confirmDeleteUser}
+        onCancel={() => setUserToDelete(null)}
+      />
     </Layout>
   );
 }

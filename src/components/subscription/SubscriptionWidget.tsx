@@ -31,7 +31,11 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [snippetStats, setSnippetStats] = useState({ total: 0, privateCount: 0 });
 
-  const isPro = user?.plan === "PRO";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
+  const isPro = user?.plan === "PRO" || isAdmin;
+
+  // Do not render subscription widget for admin users
+  if (isAdmin) return null;
 
   // Fetch user snippet counts if not provided via props
   useEffect(() => {
@@ -65,7 +69,15 @@ export const SubscriptionWidget: React.FC<SubscriptionWidgetProps> = ({
             <Crown className="w-3 h-3 text-amber-400" /> Current Plan
           </span>
           <div className="flex items-center gap-1.5 pt-0.5">
-            {isPro ? <ProBadge size="xs" /> : <PlanBadge plan="FREE" size="sm" />}
+            {isAdmin ? (
+              <span className="px-2 py-0.5 text-xs font-semibold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                ADMIN
+              </span>
+            ) : isPro ? (
+              <ProBadge size="xs" />
+            ) : (
+              <PlanBadge plan="FREE" size="sm" />
+            )}
           </div>
         </div>
 

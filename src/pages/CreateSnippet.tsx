@@ -44,7 +44,8 @@ export function CreateSnippet() {
   const { user } = useAuth();
   
   // Feature gating flag
-  const isPro = user?.plan === 'PRO';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const isPro = user?.plan === 'PRO' || isAdmin;
   const isEditMode = !!id;
 
   // Wizard Step State (1, 2, or 3)
@@ -328,7 +329,15 @@ export function CreateSnippet() {
             </div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
-            {isPro ? <ProBadge size="sm" /> : <PlanBadge plan="FREE" size="sm" />}
+            {isAdmin ? (
+              <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> ADMIN
+              </span>
+            ) : isPro ? (
+              <ProBadge size="sm" />
+            ) : (
+              <PlanBadge plan="FREE" size="sm" />
+            )}
           </div>
         </div>
 
@@ -383,8 +392,21 @@ export function CreateSnippet() {
           </div>
         ) : (
           <>
-            {/* ── Slim Free Plan Banner ── */}
-            {!isPro ? (
+            {/* ── Slim Free Plan / Admin Access Banner ── */}
+            {isAdmin ? (
+              <div className="mb-6 py-2.5 px-4 rounded-xl bg-purple-500/[0.07] border border-purple-500/20 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-purple-500/15 text-purple-400 shrink-0">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-purple-300 text-xs">Admin Access: </span>
+                    <span className="text-gray-400 text-xs">Unlimited public &amp; private code snippets enabled.</span>
+                  </div>
+                </div>
+                <span className="px-2 py-0.5 text-xs font-semibold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30">ADMIN</span>
+              </div>
+            ) : !isPro ? (
               <div className="mb-6 py-2.5 px-4 rounded-xl bg-blue-500/[0.07] border border-blue-500/20 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400 shrink-0">

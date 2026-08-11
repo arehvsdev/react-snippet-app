@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Plus, Edit, Trash2, Tag as TagIcon, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Tag as TagIcon, Search, X, ArrowLeft } from 'lucide-react';
 import { getTags, createTag, updateTag, deleteTag } from '../../services/snippetService';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface TagItem {
   _id: string;
@@ -21,6 +23,7 @@ export function ManageTags() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedTag, setSelectedTag] = useState<TagItem | null>(null);
+  const [tagToDelete, setTagToDelete] = useState<TagItem | null>(null);
 
   // Form Inputs
   const [name, setName] = useState('');
@@ -88,14 +91,13 @@ export function ManageTags() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this tag? It will be removed from all snippets containing it.')) {
-      return;
-    }
+  const confirmDeleteTag = async () => {
+    if (!tagToDelete) return;
 
     try {
-      await deleteTag(id);
+      await deleteTag(tagToDelete._id);
       toast.success('Tag deleted successfully');
+      setTagToDelete(null);
       loadTags();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete tag');
@@ -130,9 +132,19 @@ export function ManageTags() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Manage Tags</h1>
-              <p className="text-gray-400">Add, edit, or remove code snippet tags</p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/admin/dashboard"
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 transition-all flex items-center gap-2 text-sm font-medium shrink-0 cursor-pointer"
+                title="Back to Admin Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Manage Tags</h1>
+                <p className="text-gray-400 text-sm">Add, edit, or remove code snippet tags</p>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -182,7 +194,6 @@ export function ManageTags() {
                       </div>
                       <div>
                         <h3 className="font-bold text-white text-lg">#{tag.name}</h3>
-                        <p className="text-sm text-gray-400">{tag.count || 0} snippets</p>
                       </div>
                     </div>
                     <button
@@ -205,8 +216,8 @@ export function ManageTags() {
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(tag._id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-red-400 hover:text-red-300 hover:bg-red-950/20 border border-gray-700 hover:border-red-900/50 rounded-lg transition-colors text-sm font-medium"
+                      onClick={() => setTagToDelete(tag)}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-800 text-red-400 hover:text-red-300 hover:bg-red-950/20 border border-gray-700 hover:border-red-900/50 rounded-lg transition-colors text-sm font-medium cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                       Delete
@@ -253,26 +264,6 @@ export function ManageTags() {
                   />
                 </div>
                 <p className="mt-1 text-xs text-gray-400">Only letters, numbers, hyphens, and underscores are allowed.</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Color</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-14 h-10 bg-gray-900 border border-gray-600 rounded-lg cursor-pointer p-0.5"
-                  />
-                  <input
-                    type="text"
-                    required
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
-                    placeholder="#3B82F6"
-                  />
-                </div>
               </div>
               <div className="flex items-center gap-2 pt-2">
                 <input
@@ -335,26 +326,6 @@ export function ManageTags() {
                 </div>
                 <p className="mt-1 text-xs text-gray-400">Only letters, numbers, hyphens, and underscores are allowed.</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">Color</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="w-14 h-10 bg-gray-900 border border-gray-600 rounded-lg cursor-pointer p-0.5"
-                  />
-                  <input
-                    type="text"
-                    required
-                    pattern="^#[0-9A-Fa-f]{6}$"
-                    value={color}
-                    onChange={(e) => setColor(e.target.value)}
-                    className="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
-                    placeholder="#3B82F6"
-                  />
-                </div>
-              </div>
               <div className="flex items-center gap-2 pt-2">
                 <input
                   type="checkbox"
@@ -386,6 +357,15 @@ export function ManageTags() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(tagToDelete)}
+        title="Delete Tag"
+        message={`Are you sure you want to delete the tag "#${tagToDelete?.name}"? It will be removed from all snippets containing it.`}
+        confirmText="Delete Tag"
+        onConfirm={confirmDeleteTag}
+        onCancel={() => setTagToDelete(null)}
+      />
     </Layout>
   );
 }

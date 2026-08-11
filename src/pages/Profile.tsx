@@ -6,6 +6,7 @@ import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
 import { getUserProfile, updateUserProfile, updateUserAvatar, changeUserPassword } from '../services/userService';
 import { getSnippets, getUserBookmarks, updateSnippet, getMySnippetStats, type UserSnippetStats } from '../services/snippetService';
+import { getAvatarUrl } from '../utils/avatar';
 import toast from 'react-hot-toast';
 
 /**
@@ -146,7 +147,7 @@ export function Profile() {
         email: profile?.email || user?.email || '',
         username: safeUsername,
         bio: profile?.bio || 'Full-stack developer passionate about clean code and open source',
-        avatar: profile?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=3b82f6&color=fff`,
+        avatar: getAvatarUrl(profile?.avatar || user?.avatar, nameStr),
         joinedDate: formattedJoinedDate,
         phoneNumber: profile?.phonenumber || profile?.phoneNumber || user?.phoneNumber
       };
@@ -156,7 +157,8 @@ export function Profile() {
       if (profile) {
         updateUser({
           ...user,
-          ...profile
+          ...profile,
+          avatar: getAvatarUrl(profile?.avatar || user?.avatar, nameStr)
         } as any);
       }
     } catch (err: any) {
@@ -174,7 +176,7 @@ export function Profile() {
           email: user.email || '',
           username: fallbackUsername,
           bio: user.bio || 'Full-stack developer passionate about clean code and open source',
-          avatar: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=3b82f6&color=fff`,
+          avatar: getAvatarUrl(user.avatar, fallbackName),
           joinedDate: formattedJoinedDate,
           phoneNumber: user.phoneNumber
         });
@@ -390,7 +392,7 @@ export function Profile() {
               <div className="flex flex-col items-center">
                 <div className="relative mb-4 group cursor-pointer" onClick={handleAvatarClick}>
                   <img
-                    src={currentUserData.avatar}
+                    src={getAvatarUrl(currentUserData.avatar, currentUserData.name)}
                     alt={currentUserData.name}
                     className="w-32 h-32 rounded-full object-cover border-4 border-gray-700 shadow-md group-hover:opacity-80 transition-opacity"
                   />

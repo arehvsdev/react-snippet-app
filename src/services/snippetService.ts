@@ -350,12 +350,26 @@ export const deleteTag = async (id: string): Promise<any> => {
 /**
  * Toggles a snippet like.
  */
-export const toggleSnippetLikeInDB = async (snippetId: string): Promise<{ liked: boolean; likes: number }> => {
+export const toggleSnippetLikeInDB = async (snippetId: string): Promise<{ liked: boolean; likes: number; recommendationScore?: number }> => {
   const resData = await apiClient.post(`/snippets/${snippetId}/like`);
-  return {
+  const result = {
     liked: resData.liked,
-    likes: resData.likes || 0
+    likes: resData.likes || 0,
+    recommendationScore: resData.recommendationScore ?? resData.data?.recommendationScore
   };
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('snippet-liked', {
+      detail: {
+        snippetId,
+        liked: result.liked,
+        likes: result.likes,
+        recommendationScore: result.recommendationScore
+      }
+    }));
+  }
+
+  return result;
 };
 
 /**

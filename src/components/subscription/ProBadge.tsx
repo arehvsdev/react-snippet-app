@@ -38,12 +38,12 @@ export const ProBadge: React.FC<ProBadgeProps> = ({
   };
 
   return (
-    <div
+    <span
       className={`inline-flex items-center font-semibold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 ${sizeClasses[size]} ${className}`}
     >
       {showIcon && <Crown className={`${iconSizes[size]} text-amber-400 flex-shrink-0`} />}
       <span>PRO</span>
-    </div>
+    </span>
   );
 };
 

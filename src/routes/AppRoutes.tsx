@@ -24,6 +24,7 @@ const ManageLanguages = lazy(() => import("../components/admin/ManageLanguages")
 const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m => ({ default: m.ManageTags })));
 const ManageCategories = lazy(() => import("../components/admin/ManageCategories").then(m => ({ default: m.ManageCategories })));
 const ManageUsers = lazy(() => import("../components/admin/ManageUsers").then(m => ({ default: m.ManageUsers })));
+const ActivityLogs = lazy(() => import("../components/admin/ActivityLogs").then(m => ({ default: m.ActivityLogs })));
 
 // 404 Not Found fallback component
 const NotFound = () => (
@@ -49,7 +50,6 @@ const AppRoutes = () => {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<Navigate to="/" replace />} />
-        <Route path="/pricing" element={<Pricing />} />
 
         {/* Protected Routes for Authenticated Users */}
         <Route element={<ProtectedRoute />}>
@@ -61,6 +61,7 @@ const AppRoutes = () => {
           
           <Route element={<NormalUserRoute />}>
             <Route path="/subscription" element={<Subscription />} />
+            <Route path="/pricing" element={<Pricing />} />
           </Route>
           
           <Route path="/bookmarks" element={<Bookmarks />} />
@@ -77,6 +78,7 @@ const AppRoutes = () => {
             <Route path="/admin/tags" element={<ManageTags />} />
             <Route path="/admin/categories" element={<ManageCategories />} />
             <Route path="/admin/users" element={<ManageUsers />} />
+            <Route path="/admin/logs" element={<ActivityLogs />} />
           </Route>
 
           {/* Redirects for alternative paths */}

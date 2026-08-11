@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Users, Code2, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { Users, Code2, AlertCircle, Loader2, Tag, FileText, Globe } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { 
   getDashboardSummary, 
@@ -9,11 +9,11 @@ import {
   getDashboardSnippetLanguages, 
   getDashboardWeeklyActivity 
 } from '../../services/adminDashboardService';
-import { SubscriptionWidget } from '../subscription/SubscriptionWidget';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6B7280'];
 
 export function AdminDashboard() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -21,7 +21,8 @@ export function AdminDashboard() {
   const [summary, setSummary] = useState<any>({
     totalUsers: { value: 0, change: "+0.0%" },
     totalSnippets: { value: 0, change: "+0.0%" },
-    totalViews: { value: 0, change: "+0.0%" },
+    totalLanguages: 0,
+    totalTags: 0,
     snippetsCreatedToday: { value: 0, change: "Created today" }
   });
   const [userGrowthData, setUserGrowthData] = useState<any[]>([]);
@@ -43,20 +44,26 @@ export function AdminDashboard() {
 
       if (summaryRes.success && summaryRes.data) {
         setSummary(summaryRes.data);
+      } else if (summaryRes && (summaryRes.totalLanguages !== undefined || summaryRes.totalUsers !== undefined)) {
+        setSummary(summaryRes);
       }
       if (growthRes.success && Array.isArray(growthRes.data)) {
         setUserGrowthData(growthRes.data);
       }
       if (langsRes.success && Array.isArray(langsRes.data)) {
-        // Map backend keys { language: string, count: number } to Recharts { name, value }
-        const mappedLangs = langsRes.data.map((item: any) => ({
-          name: item.language,
-          value: item.count
-        }));
-        setSnippetsByLanguage(mappedLangs);
+        const langMap = new Map<string, { name: string; value: number }>();
+        langsRes.data.forEach((item: any) => {
+          const name = item.language || 'Unknown';
+          const lowerKey = name.toLowerCase();
+          if (langMap.has(lowerKey)) {
+            langMap.get(lowerKey)!.value += item.count;
+          } else {
+            langMap.set(lowerKey, { name, value: item.count });
+          }
+        });
+        setSnippetsByLanguage(Array.from(langMap.values()).sort((a, b) => b.value - a.value));
       }
       if (activityRes.success && Array.isArray(activityRes.data)) {
-        // Map backend keys { day: string, newSnippets: number, views: number } to Recharts { day, snippets, views }
         const mappedActivity = activityRes.data.map((item: any) => ({
           day: item.day,
           snippets: item.newSnippets,
@@ -99,7 +106,7 @@ export function AdminDashboard() {
             <p className="text-gray-400 text-sm mb-6">{error}</p>
             <button
               onClick={fetchStats}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm"
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors font-medium text-sm cursor-pointer"
             >
               Retry
             </button>
@@ -109,69 +116,123 @@ export function AdminDashboard() {
     );
   }
 
+  const usersCount = typeof summary.totalUsers === 'object' ? (summary.totalUsers?.value ?? 0) : (summary.totalUsers ?? 0);
+  const snippetsCount = typeof summary.totalSnippets === 'object' ? (summary.totalSnippets?.value ?? 0) : (summary.totalSnippets ?? 0);
+  const languagesCount = typeof summary.totalLanguages === 'object' ? (summary.totalLanguages?.value ?? 0) : (summary.totalLanguages ?? summary.activeLanguages ?? 0);
+  const tagsCount = typeof summary.totalTags === 'object' ? (summary.totalTags?.value ?? 0) : (summary.totalTags ?? summary.activeTags ?? 0);
+
   return (
     <Layout>
       <div className="p-8 bg-gray-900 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+          <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
-            <div className="w-full sm:w-72">
-              <SubscriptionWidget />
-            </div>
+            <p className="text-gray-400 text-sm mt-1">Overview of platform metrics, growth analytics, and content counts.</p>
           </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          {/* Interactive Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+            {/* Total Users */}
+            <div 
+              onClick={() => navigate('/admin/users')}
+              className="bg-gray-800 border border-gray-700 hover:border-blue-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Total Users</p>
-                  <p className="text-3xl font-bold text-white">
-                    {(summary.totalUsers?.value ?? 0).toLocaleString()}
+                  <p className="text-gray-400 text-xs font-medium mb-1">Total Users</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">
+                    {usersCount.toLocaleString()}
                   </p>
-                  <p className="text-green-400 text-sm mt-2 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    {summary.totalUsers?.change ?? "+0.0%"} from last month
+                  <p className="text-blue-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    Manage users &rarr;
                   </p>
                 </div>
-                <div className="bg-blue-600/20 p-3 rounded-lg">
-                  <Users className="w-8 h-8 text-blue-400" />
+                <div className="bg-blue-600/20 p-3 rounded-xl border border-blue-500/20">
+                  <Users className="w-6 h-6 text-blue-400" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            {/* Total Snippets */}
+            <div 
+              onClick={() => navigate('/snippet-feed')}
+              className="bg-gray-800 border border-gray-700 hover:border-green-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Total Snippets</p>
-                  <p className="text-3xl font-bold text-white">
-                    {(summary.totalSnippets?.value ?? 0).toLocaleString()}
+                  <p className="text-gray-400 text-xs font-medium mb-1">Total Snippets</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-green-400 transition-colors">
+                    {snippetsCount.toLocaleString()}
                   </p>
-                  <p className="text-green-400 text-sm mt-2 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    {summary.totalSnippets?.change ?? "+0.0%"} from last month
+                  <p className="text-green-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    View feed &rarr;
                   </p>
                 </div>
-                <div className="bg-green-600/20 p-3 rounded-lg">
-                  <Code2 className="w-8 h-8 text-green-400" />
+                <div className="bg-green-600/20 p-3 rounded-xl border border-green-500/20">
+                  <Code2 className="w-6 h-6 text-green-400" />
                 </div>
               </div>
             </div>
 
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            {/* Languages Count */}
+            <div 
+              onClick={() => navigate('/admin/languages')}
+              className="bg-gray-800 border border-gray-700 hover:border-indigo-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-400 text-sm mb-1">Snippets Created Today</p>
-                  <p className="text-3xl font-bold text-white">
-                    {(summary.snippetsCreatedToday?.value ?? 0).toLocaleString()}
+                  <p className="text-gray-400 text-xs font-medium mb-1">Languages</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors">
+                    {languagesCount.toLocaleString()}
                   </p>
-                  <p className="text-green-400 text-sm mt-2 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    {summary.snippetsCreatedToday?.change ?? "Created today"}
+                  <p className="text-indigo-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    Manage languages &rarr;
                   </p>
                 </div>
-                <div className="bg-orange-600/20 p-3 rounded-lg">
-                  <Code2 className="w-8 h-8 text-orange-400" />
+                <div className="bg-indigo-600/20 p-3 rounded-xl border border-indigo-500/20">
+                  <Globe className="w-6 h-6 text-indigo-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Tags Count */}
+            <div 
+              onClick={() => navigate('/admin/tags')}
+              className="bg-gray-800 border border-gray-700 hover:border-purple-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-xs font-medium mb-1">Tags</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">
+                    {tagsCount.toLocaleString()}
+                  </p>
+                  <p className="text-purple-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    Manage tags &rarr;
+                  </p>
+                </div>
+                <div className="bg-purple-600/20 p-3 rounded-xl border border-purple-500/20">
+                  <Tag className="w-6 h-6 text-purple-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* System Audit Logs */}
+            <div 
+              onClick={() => navigate('/admin/logs')}
+              className="bg-gray-800 border border-gray-700 hover:border-amber-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-xs font-medium mb-1">System Logs</p>
+                  <p className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                    Audit Logs
+                  </p>
+                  <p className="text-amber-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    View logs &rarr;
+                  </p>
+                </div>
+                <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-500/20">
+                  <FileText className="w-6 h-6 text-amber-400" />
                 </div>
               </div>
             </div>
@@ -180,7 +241,7 @@ export function AdminDashboard() {
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* User Growth Chart */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
               <h3 className="text-lg font-semibold text-white mb-4">User Growth</h3>
               {userGrowthData.length === 0 ? (
                 <div className="h-[300px] flex items-center justify-center text-gray-500 text-sm">
@@ -208,7 +269,7 @@ export function AdminDashboard() {
             </div>
 
             {/* Snippets by Language */}
-            <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
               <h3 className="text-lg font-semibold text-white mb-4">Snippets by Language</h3>
               {snippetsByLanguage.length === 0 ? (
                 <div className="h-[300px] flex items-center justify-center text-gray-500 text-sm">
@@ -246,7 +307,7 @@ export function AdminDashboard() {
           </div>
 
           {/* Activity Chart */}
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-6 shadow-xl">
             <h3 className="text-lg font-semibold text-white mb-4">Weekly Activity</h3>
             {activityData.length === 0 ? (
               <div className="h-[300px] flex items-center justify-center text-gray-500 text-sm">
@@ -272,38 +333,6 @@ export function AdminDashboard() {
                 </BarChart>
               </ResponsiveContainer>
             )}
-          </div>
-
-          {/* Quick Actions */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
-            <Link
-              to="/admin/languages"
-              className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="text-lg font-semibold text-white mb-2">Manage Languages</h3>
-              <p className="text-gray-400 text-sm">Add or edit programming languages</p>
-            </Link>
-            <Link
-              to="/admin/tags"
-              className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="text-lg font-semibold text-white mb-2">Manage Tags</h3>
-              <p className="text-gray-400 text-sm">Create and organize tags</p>
-            </Link>
-            <Link
-              to="/admin/categories"
-              className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="text-lg font-semibold text-white mb-2">Manage Categories</h3>
-              <p className="text-gray-400 text-sm">Create and organize categories</p>
-            </Link>
-            <Link
-              to="/admin/users"
-              className="bg-gray-800 border border-gray-700 rounded-lg p-6 hover:bg-gray-700 transition-colors"
-            >
-              <h3 className="text-lg font-semibold text-white mb-2">Manage Users</h3>
-              <p className="text-gray-400 text-sm">View and manage user accounts</p>
-            </Link>
           </div>
         </div>
       </div>

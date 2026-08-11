@@ -8,6 +8,9 @@ import {
   Edit3,
   Trash2,
   UserPlus,
+  UserCheck,
+  Camera,
+  Key,
   MessageSquare,
   Loader2,
   ChevronLeft,
@@ -19,7 +22,7 @@ import {
 } from 'lucide-react';
 import {
   getActivityLogs,
-  ActivityLogItem,
+  type ActivityLogItem,
 } from '../../services/activityLogService';
 import toast from 'react-hot-toast';
 
@@ -56,6 +59,24 @@ const actionTypeConfig: Record<
     badgeBg: 'bg-purple-500/10 border-purple-500/30',
     textColor: 'text-purple-400',
     icon: UserPlus,
+  },
+  user_update_profile: {
+    label: 'Profile Updated',
+    badgeBg: 'bg-indigo-500/10 border-indigo-500/30',
+    textColor: 'text-indigo-400',
+    icon: UserCheck,
+  },
+  user_update_avatar: {
+    label: 'Avatar Updated',
+    badgeBg: 'bg-teal-500/10 border-teal-500/30',
+    textColor: 'text-teal-400',
+    icon: Camera,
+  },
+  user_change_password: {
+    label: 'Password Changed',
+    badgeBg: 'bg-rose-500/10 border-rose-500/30',
+    textColor: 'text-rose-400',
+    icon: Key,
   },
   snippet_comment: {
     label: 'Snippet Comment',

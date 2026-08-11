@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { ProBadge } from '../components/subscription/ProBadge';
+import { getAvatarUrl } from '../utils/avatar';
 
 /**
  * Navigation item structure.
@@ -93,7 +94,10 @@ export default function Navbar() {
 
     const isAdmin = user?.role?.toLowerCase() === 'admin';
     const itemsToRender = isAdmin
-      ? NAVIGATION_ITEMS.filter((item) => item.href !== '/subscription')
+      ? [
+          { name: 'Dashboard', href: '/admin/dashboard' },
+          ...NAVIGATION_ITEMS.filter((item) => item.href !== '/subscription' && item.href !== '/pricing')
+        ]
       : NAVIGATION_ITEMS;
 
     return itemsToRender.map((item) => {
@@ -141,16 +145,7 @@ export default function Navbar() {
           {isPro && !isAdmin && <ProBadge size="xs" className="mr-2" />}
           <img
             alt={displayName}
-            src={
-              (() => {
-                const av = (user as any)?.avatar;
-                const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
-                if (str && typeof str === 'string' && str.trim()) {
-                  return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
-                }
-                return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=3b82f6&color=fff`;
-              })()
-            }
+            src={getAvatarUrl((user as any)?.avatar, displayName)}
             className="size-8 rounded-full bg-gray-800 outline -outline-offset-1 outline-white/10"
           />
         </button>

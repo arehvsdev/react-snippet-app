@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Bell, Code2, Home, Plus, BookMarked, Sparkles, CreditCard, LogOut, Settings, Key, User, HelpCircle, Menu, X, ChevronRight, Folder } from 'lucide-react';
+import { Bell, Code2, Home, Plus, BookMarked, Sparkles, CreditCard, LogOut, Settings, Key, User, HelpCircle, Menu, X, ChevronRight, Folder, LayoutDashboard, FileText } from 'lucide-react';
 import { useAuth } from '../layouts/AuthContext';
 import { PlanBadge } from '../components/subscription/PlanBadge';
 import { FaqComponent } from '../components/FAQ/FaqComponent';
 import { getUnreadNotificationCount, getNotifications, type AppNotification } from '../services/notificationService';
+import { getAvatarUrl } from '../utils/avatar';
 
 interface LayoutProps {
   children: ReactNode;
@@ -134,6 +135,32 @@ export function Layout({ children }: LayoutProps) {
 
             {/* Desktop Navigation Links (>=1024px) */}
             <div className="hidden lg:flex items-center gap-1.5">
+              {user?.role?.toLowerCase() === 'admin' && (
+                <>
+                  <button
+                    onClick={() => navigate('/admin/dashboard')}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
+                      isActive('/admin/dashboard')
+                        ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
+                        : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-blue-400" />
+                    <span className="text-sm font-medium">Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin/logs')}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
+                      isActive('/admin/logs')
+                        ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
+                        : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 text-purple-400" />
+                    <span className="text-sm font-medium">Activity Logs</span>
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => navigate('/snippet-feed')}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
@@ -167,28 +194,32 @@ export function Layout({ children }: LayoutProps) {
                 <BookMarked className="w-4 h-4" />
                 <span className="text-sm font-medium">My Snippets</span>
               </button>
-              <button
-                onClick={() => navigate('/pricing')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
-                  isActive('/pricing')
-                    ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
-                }`}
-              >
-                <CreditCard className="w-4 h-4" />
-                <span className="text-sm font-medium">Pricing</span>
-              </button>
-              <button
-                onClick={() => navigate('/subscription')}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
-                  isActive('/subscription')
-                    ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-medium">Subscription</span>
-              </button>
+              {user?.role?.toLowerCase() !== 'admin' && (
+                <button
+                  onClick={() => navigate('/pricing')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
+                    isActive('/pricing')
+                      ? 'bg-blue-600/20 text-blue-400 font-semibold border border-blue-500/30'
+                      : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span className="text-sm font-medium">Pricing</span>
+                </button>
+              )}
+              {user?.role?.toLowerCase() !== 'admin' && (
+                <button
+                  onClick={() => navigate('/subscription')}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-lg transition-colors cursor-pointer min-h-[44px] ${
+                    isActive('/subscription')
+                      ? 'bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30'
+                      : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm font-medium">Subscription</span>
+                </button>
+              )}
             </div>
 
             {/* Right Side Controls */}
@@ -278,16 +309,7 @@ export function Layout({ children }: LayoutProps) {
                   aria-expanded={showProfileMenu}
                 >
                   <img
-                    src={
-                      (() => {
-                        const av = (user as any)?.avatar;
-                        const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
-                        if (str && typeof str === 'string' && str.trim()) {
-                          return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
-                        }
-                        return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`;
-                      })()
-                    }
+                    src={getAvatarUrl((user as any)?.avatar, user?.fullName || 'User')}
                     alt={user?.fullName || 'User'}
                     className="w-9 h-9 rounded-full object-cover border-2 border-gray-600 hover:border-blue-500 transition-colors"
                   />
@@ -306,15 +328,29 @@ export function Layout({ children }: LayoutProps) {
                     </div>
 
                     <div className="py-1.5">
+                      {user?.role?.toLowerCase() === 'admin' && (
+                        <>
+                          <button onClick={() => profileNavigate('/admin/dashboard')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-blue-400 hover:bg-gray-700/60 hover:text-blue-300 font-semibold transition-colors cursor-pointer min-h-[44px]">
+                            <LayoutDashboard className="w-4 h-4 text-blue-400" /> Admin Dashboard
+                          </button>
+                          <button onClick={() => profileNavigate('/admin/logs')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-purple-400 hover:bg-gray-700/60 hover:text-purple-300 font-semibold transition-colors cursor-pointer min-h-[44px]">
+                            <FileText className="w-4 h-4 text-purple-400" /> Activity Logs
+                          </button>
+                        </>
+                      )}
                       <button onClick={() => profileNavigate('/profile')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
                         <User className="w-4 h-4 text-gray-400" /> Profile
                       </button>
-                      <button onClick={() => profileNavigate('/subscription')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
-                        <Sparkles className="w-4 h-4 text-amber-400" /> Subscription
-                      </button>
-                      <button onClick={() => profileNavigate('/pricing')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
-                        <CreditCard className="w-4 h-4 text-gray-400" /> Pricing
-                      </button>
+                      {user?.role?.toLowerCase() !== 'admin' && (
+                        <>
+                          <button onClick={() => profileNavigate('/subscription')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
+                            <Sparkles className="w-4 h-4 text-amber-400" /> Subscription
+                          </button>
+                          <button onClick={() => profileNavigate('/pricing')} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
+                            <CreditCard className="w-4 h-4 text-gray-400" /> Pricing
+                          </button>
+                        </>
+                      )}
                       <button onClick={() => { setShowProfileMenu(false); setIsFaqOpen(true); }} className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700/60 hover:text-white transition-colors cursor-pointer min-h-[44px]">
                         <HelpCircle className="w-4 h-4 text-blue-400" /> FAQs
                       </button>
@@ -379,16 +415,7 @@ export function Layout({ children }: LayoutProps) {
             {user && (
               <div className="p-4 bg-gray-900/60 border-b border-gray-700 flex items-center gap-3">
                 <img
-                  src={
-                    (() => {
-                      const av = (user as any)?.avatar;
-                      const str = typeof av === 'string' ? av : (av && typeof av === 'object' ? (av.avatar || av.url || '') : '');
-                      if (str && typeof str === 'string' && str.trim()) {
-                        return str.startsWith('http') ? str : `${import.meta.env.VITE_API_BASE_URL || ''}${str}`;
-                      }
-                      return `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'User')}&background=3b82f6&color=fff`;
-                    })()
-                  }
+                  src={getAvatarUrl((user as any)?.avatar, user?.fullName || 'User')}
                   alt={user.fullName || 'User'}
                   className="w-10 h-10 rounded-full object-cover border-2 border-gray-600"
                 />
@@ -403,6 +430,23 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex-1 overflow-y-auto p-4 space-y-1">
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-3 mb-2">Navigation</p>
               
+              {user?.role?.toLowerCase() === 'admin' && (
+                <button
+                  onClick={() => handleMobileNavigate('/admin/dashboard')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
+                    location.pathname.startsWith('/admin')
+                      ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20'
+                      : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <LayoutDashboard className="w-5 h-5 text-blue-400" />
+                    <span className="text-sm font-medium">Admin Dashboard</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-50" />
+                </button>
+              )}
+
               <button
                 onClick={() => handleMobileNavigate('/snippet-feed')}
                 className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
@@ -463,35 +507,39 @@ export function Layout({ children }: LayoutProps) {
                 <ChevronRight className="w-4 h-4 opacity-50" />
               </button>
 
-              <button
-                onClick={() => handleMobileNavigate('/pricing')}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
-                  isActive('/pricing')
-                    ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20'
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <CreditCard className="w-5 h-5" />
-                  <span className="text-sm font-medium">Pricing Plans</span>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-50" />
-              </button>
+              {user?.role?.toLowerCase() !== 'admin' && (
+                <button
+                  onClick={() => handleMobileNavigate('/pricing')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
+                    isActive('/pricing')
+                      ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-600/20'
+                      : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5" />
+                    <span className="text-sm font-medium">Pricing Plans</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-50" />
+                </button>
+              )}
 
-              <button
-                onClick={() => handleMobileNavigate('/subscription')}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
-                  isActive('/subscription')
-                    ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                    : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-5 h-5 text-amber-400" />
-                  <span className="text-sm font-medium">Subscription</span>
-                </div>
-                <ChevronRight className="w-4 h-4 opacity-50" />
-              </button>
+              {user?.role?.toLowerCase() !== 'admin' && (
+                <button
+                  onClick={() => handleMobileNavigate('/subscription')}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl transition-all cursor-pointer min-h-[44px] ${
+                    isActive('/subscription')
+                      ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
+                      : 'text-gray-300 hover:bg-gray-700/80 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-5 h-5 text-amber-400" />
+                    <span className="text-sm font-medium">Subscription</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 opacity-50" />
+                </button>
+              )}
 
               <button
                 onClick={() => handleMobileNavigate('/snippet-feed')}
@@ -562,7 +610,9 @@ export function Layout({ children }: LayoutProps) {
       </main>
 
       {/* Standalone FAQ Modal Component */}
-      <FaqComponent isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} />
+      {user?.role?.toLowerCase() !== 'admin' && (
+        <FaqComponent isOpen={isFaqOpen} onClose={() => setIsFaqOpen(false)} />
+      )}
     </div>
   );
 }

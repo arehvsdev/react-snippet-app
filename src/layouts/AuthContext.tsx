@@ -92,7 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => {
       refreshSubscription();
     }, 500);
-    navigate("/snippet-feed");
+    const targetRoute = userWithoutToken.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/snippet-feed";
+    navigate(targetRoute);
   };
 
   /**

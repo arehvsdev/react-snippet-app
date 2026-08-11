@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, MessageCircle, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Sparkles, Code2, Crown, Lock } from 'lucide-react';
+import { Heart, MessageCircle, SlidersHorizontal, ChevronLeft, ChevronRight, ArrowUpDown, Search, Sparkles, Code2, Crown, Lock, ShieldCheck } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { SnippetDetail } from './SnippetDetail';
 import { Layout } from './Layout';
@@ -23,9 +23,11 @@ export interface Snippet {
   likes: number;
   comments: number;
   views: number;
-  isBookmarked: boolean;
-  category?: any;
+  isBookmarked?: boolean;
+  isLiked?: boolean;
   recommendationScore?: number;
+  bookmarksCount?: number;
+  category?: any;
   ai?: {
     recommendationScore?: number;
     sentimentScore?: number;
@@ -134,8 +136,17 @@ export function SnippetFeed() {
 
         setSelectedSnippet(prev => {
           if (!prev && snippetList.length > 0) return snippetList[0];
-          const stillVisible = snippetList.find((s: any) => s.id === prev?.id);
-          return stillVisible || (snippetList.length > 0 ? snippetList[0] : null);
+          if (!prev) return null;
+          const matched = snippetList.find((s: any) => s.id === prev.id);
+          if (matched) {
+            return {
+              ...matched,
+              // Maintain local live likes if currently being toggled
+              likes: matched.likes,
+              isLiked: matched.isLiked
+            };
+          }
+          return snippetList.length > 0 ? snippetList[0] : null;
         });
       } catch (err) {
         console.error("Failed to fetch debounced snippets:", err);
@@ -146,6 +157,41 @@ export function SnippetFeed() {
 
     return () => clearTimeout(delayDebounce);
   }, [search, language, category, tag, author, visibility, sortBy, sortOrder, page, activeCategory, user]);
+
+  // Global snippet-liked event listener to keep feed cards and detail sync in real-time
+  useEffect(() => {
+    const handleSnippetLikedEvent = (e: any) => {
+      const { snippetId, liked, likes, recommendationScore } = e.detail || {};
+      if (!snippetId) return;
+
+      setSnippets(prev => prev.map(s => {
+        if (s.id === snippetId) {
+          return {
+            ...s,
+            isLiked: liked,
+            likes: likes,
+            recommendationScore: recommendationScore ?? s.recommendationScore
+          };
+        }
+        return s;
+      }));
+
+      setSelectedSnippet(prev => {
+        if (prev && prev.id === snippetId) {
+          return {
+            ...prev,
+            isLiked: liked,
+            likes: likes,
+            recommendationScore: recommendationScore ?? prev.recommendationScore
+          };
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener('snippet-liked', handleSnippetLikedEvent);
+    return () => window.removeEventListener('snippet-liked', handleSnippetLikedEvent);
+  }, []);
 
   return (
     <Layout>
@@ -243,7 +289,11 @@ export function SnippetFeed() {
                         <Lock className="w-3.5 h-3.5 text-purple-400" />
                         <span>Visibility</span>
                       </span>
-                      {user?.plan === 'PRO' ? (
+                      {user?.role?.toLowerCase() === 'admin' ? (
+                        <span className="text-[10px] text-purple-400 font-extrabold flex items-center gap-0.5 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                          <ShieldCheck className="w-3 h-3 text-purple-400" /> Admin Unlocked
+                        </span>
+                      ) : user?.plan === 'PRO' ? (
                         <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-0.5 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                           <Crown className="w-3 h-3 fill-amber-400 text-amber-400" /> PRO Unlocked
                         </span>

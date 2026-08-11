@@ -16,9 +16,10 @@ export function Landing() {
   // Redirect to dashboard/feed if user is already authenticated
   useEffect(() => {
     if (auth.isAuthenticated) {
-      navigate('/snippet-feed');
+      const target = auth.user?.role?.toLowerCase() === 'admin' ? '/admin/dashboard' : '/snippet-feed';
+      navigate(target);
     }
-  }, [auth.isAuthenticated, navigate]);
+  }, [auth.isAuthenticated, auth.user, navigate]);
 
   return (
     <div className="h-screen flex flex-col bg-[#1e2939] text-white overflow-hidden">

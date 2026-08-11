@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Plus, Edit, Trash2, Code2, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Code2, Search, X, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getLanguages, createLanguage, updateLanguage, deleteLanguage } from '../../services/snippetService';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface LanguageItem {
   _id: string;
@@ -16,11 +18,14 @@ export function ManageLanguages() {
   const [languages, setLanguages] = useState<LanguageItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
   
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<LanguageItem | null>(null);
+  const [languageToDelete, setLanguageToDelete] = useState<LanguageItem | null>(null);
 
   // Form inputs
   const [name, setName] = useState('');
@@ -42,6 +47,10 @@ export function ManageLanguages() {
   useEffect(() => {
     loadLanguages();
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const handleAddLanguage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,14 +87,13 @@ export function ManageLanguages() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this language? This will remove language classification from all snippets using it.')) {
-      return;
-    }
+  const confirmDeleteLanguage = async () => {
+    if (!languageToDelete) return;
 
     try {
-      await deleteLanguage(id);
+      await deleteLanguage(languageToDelete._id);
       toast.success('Language deleted successfully');
+      setLanguageToDelete(null);
       loadLanguages();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete language');
@@ -115,15 +123,29 @@ export function ManageLanguages() {
     lang.icon.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const totalPages = Math.max(1, Math.ceil(filteredLanguages.length / itemsPerPage));
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedLanguages = filteredLanguages.slice(startIndex, startIndex + itemsPerPage);
+
   return (
     <Layout>
       <div className="p-8 bg-gray-900 min-h-screen">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
+          {/* Header with Back to Admin Dashboard Navigation Button */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Manage Languages</h1>
-              <p className="text-gray-400">Add, edit, or remove programming languages</p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/admin/dashboard"
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 transition-all flex items-center gap-2 text-sm font-medium shrink-0 cursor-pointer"
+                title="Back to Admin Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Manage Languages</h1>
+                <p className="text-gray-400 text-sm">Add, edit, or remove programming languages</p>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -132,7 +154,7 @@ export function ManageLanguages() {
                 setIsActive(true);
                 setShowAddModal(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg hover:shadow-blue-500/20 font-medium"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all shadow-lg hover:shadow-blue-500/20 font-medium cursor-pointer"
             >
               <Plus className="w-5 h-5" />
               Add Language
@@ -169,7 +191,7 @@ export function ManageLanguages() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLanguages.map((language) => (
+                  {paginatedLanguages.map((language) => (
                     <tr key={language._id} className="border-b border-gray-700 hover:bg-gray-700/50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -184,8 +206,8 @@ export function ManageLanguages() {
                           {language.icon}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-gray-300">
-                        {language.count || 0}
+                      <td className="px-6 py-4 text-gray-300 font-semibold">
+                        {language.count ?? 0}
                       </td>
                       <td className="px-6 py-4">
                         <button
@@ -203,14 +225,14 @@ export function ManageLanguages() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => openEditModal(language)}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700 hover:border-gray-600"
+                            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors border border-gray-700 hover:border-gray-600 cursor-pointer"
                             title="Edit Language"
                           >
                             <Edit className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(language._id)}
-                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-colors border border-gray-700 hover:border-red-900/50"
+                            onClick={() => setLanguageToDelete(language)}
+                            className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-950/20 rounded-lg transition-colors border border-gray-700 hover:border-red-900/50 cursor-pointer"
                             title="Delete Language"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -221,6 +243,52 @@ export function ManageLanguages() {
                   ))}
                 </tbody>
               </table>
+
+              {/* Pagination Controls */}
+              {filteredLanguages.length > 0 && (
+                <div className="px-6 py-4 bg-gray-900 border-t border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <p className="text-xs text-gray-400">
+                    Showing <span className="font-semibold text-white">{startIndex + 1}</span> to{' '}
+                    <span className="font-semibold text-white">
+                      {Math.min(startIndex + itemsPerPage, filteredLanguages.length)}
+                    </span>{' '}
+                    of <span className="font-semibold text-white">{filteredLanguages.length}</span> languages
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <div className="flex items-center gap-1 px-2">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                        <button
+                          key={p}
+                          onClick={() => setCurrentPage(p)}
+                          className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            currentPage === p
+                              ? 'bg-blue-600 text-white font-bold'
+                              : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white border border-gray-700'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:text-white hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="bg-gray-800 border border-gray-700 rounded-xl p-12 text-center shadow-xl">
@@ -367,6 +435,15 @@ export function ManageLanguages() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(languageToDelete)}
+        title="Delete Language"
+        message={`Are you sure you want to delete "${languageToDelete?.name}"? This will remove language classification from all snippets using it.`}
+        confirmText="Delete Language"
+        onConfirm={confirmDeleteLanguage}
+        onCancel={() => setLanguageToDelete(null)}
+      />
     </Layout>
   );
 }

@@ -5,6 +5,7 @@ import { toggleBookmarkInDB, saveCommentToDB, getComments, toggleSnippetLikeInDB
 import { getSimilarSnippets, type RecommendedSnippet } from '../services/recommendationService';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../components/common/ConfirmModal';
 
 interface Comment {
   id: string;
@@ -38,8 +39,9 @@ interface SnippetDetailProps {
     likes: number;
     comments: number;
     views: number;
-    isBookmarked: boolean;
+    isBookmarked?: boolean;
     isLiked?: boolean;
+    recommendationScore?: number;
     bookmarksCount?: number;
   };
   onSelectSnippet?: (s: any) => void;
@@ -81,20 +83,23 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
     loadSimilar();
   }, [snippet.id]);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
+
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const isOwner = Boolean(
     user && (
+      isAdmin ||
       (user.username && snippet.author?.username && user.username === snippet.author.username) ||
       (user.fullName && snippet.author?.name && user.fullName === snippet.author.name)
     )
   );
 
-  const handleDeleteSnippet = async () => {
-    if (!window.confirm("Are you sure you want to delete this snippet? This action cannot be undone.")) {
-      return;
-    }
+  const confirmDeleteSnippet = async () => {
     try {
       await deleteSnippet(snippet.id);
       toast.success("Snippet deleted successfully!");
+      setShowDeleteConfirm(false);
       if (onDeleteSuccess) {
         onDeleteSuccess(snippet.id);
       } else {
@@ -129,23 +134,39 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
     }
   };
 
+  const [isSubmittingLike, setIsSubmittingLike] = useState(false);
+
   const handleToggleLike = async () => {
     if (!user) {
       toast.error("Please login to like snippets.");
       return;
     }
+    if (isSubmittingLike) return;
+
+    setIsSubmittingLike(true);
     const nextLiked = !isLiked;
     setIsLiked(nextLiked);
-    setLikesCount(prev => prev + (nextLiked ? 1 : -1));
+    setLikesCount(prev => Math.max(0, prev + (nextLiked ? 1 : -1)));
 
     try {
       const res = await toggleSnippetLikeInDB(snippet.id);
       setIsLiked(res.liked);
       setLikesCount(res.likes);
+
+      if (onSelectSnippet) {
+        onSelectSnippet({
+          ...snippet,
+          isLiked: res.liked,
+          likes: res.likes,
+          recommendationScore: res.recommendationScore ?? snippet.recommendationScore
+        });
+      }
     } catch (err: any) {
       setIsLiked(!nextLiked);
-      setLikesCount(prev => prev + (nextLiked ? -1 : 1));
+      setLikesCount(prev => Math.max(0, prev + (nextLiked ? -1 : 1)));
       toast.error(err.message || 'Failed to toggle like');
+    } finally {
+      setIsSubmittingLike(false);
     }
   };
 
@@ -240,16 +261,17 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    if (!window.confirm("Are you sure you want to delete this comment? This will also delete any replies.")) return;
+  const confirmDeleteComment = async () => {
+    if (!commentToDelete) return;
     try {
-      await deleteCommentInDB(commentId);
-      setComments(prev => prev.filter(c => c.id !== commentId && c.parentId !== commentId));
-      const deletedCount = comments.filter(c => c.id === commentId || c.parentId === commentId).length;
+      await deleteCommentInDB(commentToDelete);
+      setComments(prev => prev.filter(c => c.id !== commentToDelete && c.parentId !== commentToDelete));
+      const deletedCount = comments.filter(c => c.id === commentToDelete || c.parentId === commentToDelete).length;
       setCommentPagination(prev => ({
         ...prev,
         totalItems: Math.max(0, prev.totalItems - deletedCount)
       }));
+      setCommentToDelete(null);
       toast.success("Comment deleted successfully!");
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete comment');
@@ -378,7 +400,7 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
               </button>
               <button
                 type="button"
-                onClick={handleDeleteSnippet}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 hover:border-red-500/40 transition-all cursor-pointer min-h-[44px]"
               >
                 <Trash2 className="w-4 h-4" />
@@ -499,8 +521,8 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
                             )}
                             {canDelete && (
                               <button
-                                onClick={() => handleDeleteComment(comment.id)}
-                                className="text-gray-400 hover:text-red-400 transition-colors"
+                                onClick={() => setCommentToDelete(comment.id)}
+                                className="text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
                                 title="Delete comment"
                                 aria-label="Delete comment"
                               >
@@ -635,8 +657,8 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
                                     )}
                                     {replyCanDelete && (
                                       <button
-                                        onClick={() => handleDeleteComment(reply.id)}
-                                        className="text-gray-400 hover:text-red-400 transition-colors"
+                                        onClick={() => setCommentToDelete(reply.id)}
+                                        className="text-gray-400 hover:text-red-400 transition-colors cursor-pointer"
                                         title="Delete reply"
                                         aria-label="Delete reply"
                                       >
@@ -793,6 +815,26 @@ export function SnippetDetail({ snippet, onSelectSnippet, onDeleteSuccess }: Sni
           </div>
         </div>
       )}
+
+      {/* Delete Snippet Confirmation Modal */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Delete Snippet"
+        message={`Are you sure you want to delete "${snippet.title}"? This action cannot be undone.`}
+        confirmText="Delete Snippet"
+        onConfirm={confirmDeleteSnippet}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      {/* Delete Comment Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(commentToDelete)}
+        title="Delete Comment"
+        message="Are you sure you want to delete this comment? This will also delete any associated replies."
+        confirmText="Delete Comment"
+        onConfirm={confirmDeleteComment}
+        onCancel={() => setCommentToDelete(null)}
+      />
     </div>
   );
 }

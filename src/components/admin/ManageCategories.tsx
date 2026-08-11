@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Plus, Edit, Trash2, Folder, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Folder, Search, X, ArrowLeft } from 'lucide-react';
 import { getCategories, createCategory, updateCategory, deleteCategory } from '../../services/snippetService';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface CategoryItem {
   _id: string;
@@ -20,6 +22,7 @@ export function ManageCategories() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryItem | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<CategoryItem | null>(null);
 
   // Form states
   const [name, setName] = useState('');
@@ -74,14 +77,13 @@ export function ManageCategories() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this category? All associated snippets will lose their category classification.')) {
-      return;
-    }
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
 
     try {
-      await deleteCategory(id);
+      await deleteCategory(categoryToDelete._id);
       toast.success('Category deleted successfully');
+      setCategoryToDelete(null);
       loadCategories();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete category');
@@ -106,9 +108,19 @@ export function ManageCategories() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Manage Categories</h1>
-              <p className="text-gray-400">Organize and manage programming and language categories</p>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/admin/dashboard"
+                className="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 transition-all flex items-center gap-2 text-sm font-medium shrink-0 cursor-pointer"
+                title="Back to Admin Dashboard"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Dashboard</span>
+              </Link>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">Manage Categories</h1>
+                <p className="text-gray-400 text-sm">Organize and manage programming and language categories</p>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -172,8 +184,8 @@ export function ManageCategories() {
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDelete(cat._id)}
-                      className="p-2 hover:bg-red-950/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-gray-700 hover:border-red-900/50"
+                      onClick={() => setCategoryToDelete(cat)}
+                      className="p-2 hover:bg-red-950/30 text-red-400 hover:text-red-300 rounded-lg transition-colors border border-gray-700 hover:border-red-900/50 cursor-pointer"
                       title="Delete Category"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -301,6 +313,15 @@ export function ManageCategories() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={Boolean(categoryToDelete)}
+        title="Delete Category"
+        message={`Are you sure you want to delete "${categoryToDelete?.name}"? All associated snippets will lose their category classification.`}
+        confirmText="Delete Category"
+        onConfirm={confirmDeleteCategory}
+        onCancel={() => setCategoryToDelete(null)}
+      />
     </Layout>
   );
 }

@@ -16,7 +16,8 @@ interface ProRouteProps {
  */
 export const ProRoute: React.FC<ProRouteProps> = ({ children }) => {
   const { isAuthenticated, user } = useAuth();
-  const isPro = user?.plan === "PRO";
+  const isAdmin = user?.role?.toLowerCase() === "admin";
+  const isPro = user?.plan === "PRO" || isAdmin;
 
   // Trigger feedback toast when a logged-in FREE user attempts access
   useEffect(() => {

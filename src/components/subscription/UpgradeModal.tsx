@@ -13,7 +13,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
   const { user, refreshSubscription } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || user?.role?.toLowerCase() === "admin") return null;
 
   const handleUpgrade = async () => {
 

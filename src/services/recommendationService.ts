@@ -48,6 +48,7 @@ const normalizeSnippet = (s: any): RecommendedSnippet => {
     },
     comments: s.commentsCount || s.comments || 0,
     isBookmarked: s.isBookmarked || false,
+    isLiked: s.isLiked || false,
     createdAt: s.createdAt
       ? new Date(s.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long" })
       : "Just now",
