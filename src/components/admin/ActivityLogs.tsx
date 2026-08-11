@@ -10,8 +10,6 @@ import {
   ChevronRight,
   Activity,
   Clock,
-  Globe,
-  Monitor,
   CheckCircle2,
   XCircle,
   AlertTriangle,
@@ -116,14 +114,7 @@ export function ActivityLogs() {
       .replace(/\b\w/g, char => char.toUpperCase());
   };
 
-  const parseBrowser = (uaString?: string) => {
-    if (!uaString || uaString === 'Unknown') return 'Chrome / Desktop';
-    if (uaString.includes('Firefox')) return 'Firefox';
-    if (uaString.includes('Safari') && !uaString.includes('Chrome')) return 'Safari';
-    if (uaString.includes('Edge')) return 'Edge';
-    if (uaString.includes('Mobile') || uaString.includes('Android') || uaString.includes('iPhone')) return 'Mobile Web';
-    return 'Chrome / Desktop';
-  };
+
 
   return (
     <Layout>
