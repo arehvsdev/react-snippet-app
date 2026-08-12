@@ -6,7 +6,6 @@ import {
   Sparkles,
   CheckCheck,
   Trash2,
-  ExternalLink,
   Inbox,
   ArrowLeft,
   Check
@@ -203,11 +202,6 @@ export function Notifications() {
 
                       <div className="flex items-center gap-3 pt-1 text-[11px] text-gray-500 font-mono">
                         <span>{new Date(notif.createdAt).toLocaleString()}</span>
-                        {notif.link && (
-                          <span className="text-blue-400 flex items-center gap-1 hover:underline">
-                            View details <ExternalLink className="w-3 h-3" />
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
