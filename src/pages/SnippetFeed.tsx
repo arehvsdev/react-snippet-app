@@ -41,6 +41,7 @@ export interface Snippet {
 
 export function SnippetFeed() {
   const { user } = useAuth();
+  const isPro = user?.plan === 'PRO' || (user?.role && (user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'pro'));
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [selectedSnippet, setSelectedSnippet] = useState<Snippet | null>(null);
   const [activeCategory, setActiveCategory] = useState<string>();
@@ -92,7 +93,7 @@ export function SnippetFeed() {
       try {
         setLoading(true);
 
-        const currentUserId = user?.id || (user as any)?._id || (user as any)?.uid;
+        const isProUser = user?.plan === 'PRO' || (user?.role && (user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'pro'));
 
         const params: any = {
           page,
@@ -102,8 +103,7 @@ export function SnippetFeed() {
           category: category || activeCategory || undefined,
           language: language || undefined,
           tags: tag || undefined,
-          visibility: visibility || undefined,
-          excludeUserId: currentUserId || undefined,
+          visibility: isProUser ? (visibility || undefined) : 'public',
           author: author || undefined,
           search: search || undefined
         };
@@ -112,32 +112,23 @@ export function SnippetFeed() {
         const data = await getSnippets(params);
         const rawList = Array.isArray(data) ? data : ((data as any)?.snippets || []);
 
-        // Filter out logged-in user's snippets only when no specific filter is active and user is not PRO
-        const hasActiveFilter = Boolean(activeCategory || category || language || search || tag || author || visibility);
-        const isPro = user?.plan === 'PRO' || (user?.role && (user.role.toLowerCase() === 'admin' || user.role.toLowerCase() === 'pro'));
-
-        const snippetList = (hasActiveFilter || isPro)
-          ? rawList
-          : rawList.filter((s: any) => {
-              if (!user) return true;
-              const authorId = String(s.createdBy?._id || s.createdBy || s.author?.id || '');
-              const authorUsername = s.author?.username;
-              return authorId !== String(currentUserId) && authorUsername !== user?.username;
-            });
-
-        setSnippets(snippetList);
+        if (page === 1) {
+          setSnippets(rawList);
+        } else {
+          setSnippets(prev => [...prev, ...rawList.filter((newS: any) => !prev.some(p => p.id === newS.id))]);
+        }
 
         const pag = (data as any)?.pagination;
         if (pag) {
           setPagination(pag);
         } else {
-          setPagination({ totalItems: snippetList.length, totalPages: 1, currentPage: 1 });
+          setPagination({ totalItems: rawList.length, totalPages: 1, currentPage: 1 });
         }
 
         setSelectedSnippet(prev => {
-          if (!prev && snippetList.length > 0) return snippetList[0];
+          if (!prev && rawList.length > 0) return rawList[0];
           if (!prev) return null;
-          const matched = snippetList.find((s: any) => s.id === prev.id);
+          const matched = rawList.find((s: any) => s.id === prev.id);
           if (matched) {
             return {
               ...matched,
@@ -146,7 +137,7 @@ export function SnippetFeed() {
               isLiked: matched.isLiked
             };
           }
-          return snippetList.length > 0 ? snippetList[0] : null;
+          return prev;
         });
       } catch (err) {
         console.error("Failed to fetch debounced snippets:", err);
@@ -158,7 +149,25 @@ export function SnippetFeed() {
     return () => clearTimeout(delayDebounce);
   }, [search, language, category, tag, author, visibility, sortBy, sortOrder, page, activeCategory, user]);
 
-  // Global snippet-liked event listener to keep feed cards and detail sync in real-time
+  // Intersection Observer for Infinite Scroll loading
+  useEffect(() => {
+    const sentinel = document.getElementById('infinite-scroll-sentinel');
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && page < pagination.totalPages) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loading, page, pagination.totalPages]);
+
+  // Global real-time event listeners for snippet likes, updates, deletions, and creations
   useEffect(() => {
     const handleSnippetLikedEvent = (e: any) => {
       const { snippetId, liked, likes, recommendationScore } = e.detail || {};
@@ -189,8 +198,55 @@ export function SnippetFeed() {
       });
     };
 
+    const handleSnippetDeletedEvent = (e: any) => {
+      const { snippetId } = e.detail || {};
+      if (!snippetId) return;
+
+      setSnippets(prev => {
+        const updatedList = prev.filter(s => s.id !== snippetId);
+        setSelectedSnippet(currSelected => {
+          if (currSelected && currSelected.id === snippetId) {
+            return updatedList.length > 0 ? updatedList[0] : null;
+          }
+          return currSelected;
+        });
+        return updatedList;
+      });
+    };
+
+    const handleSnippetUpdatedEvent = (e: any) => {
+      const { snippet } = e.detail || {};
+      if (!snippet || !snippet.id) return;
+
+      setSnippets(prev => prev.map(s => (s.id === snippet.id ? { ...s, ...snippet } : s)));
+
+      setSelectedSnippet(prev => {
+        if (prev && prev.id === snippet.id) {
+          return { ...prev, ...snippet };
+        }
+        return prev;
+      });
+    };
+
+    const handleSnippetCreatedEvent = (e: any) => {
+      const { snippet } = e.detail || {};
+      if (!snippet || !snippet.id) return;
+
+      setSnippets(prev => [snippet, ...prev.filter(s => s.id !== snippet.id)]);
+      setSelectedSnippet(snippet);
+    };
+
     window.addEventListener('snippet-liked', handleSnippetLikedEvent);
-    return () => window.removeEventListener('snippet-liked', handleSnippetLikedEvent);
+    window.addEventListener('snippet-deleted', handleSnippetDeletedEvent);
+    window.addEventListener('snippet-updated', handleSnippetUpdatedEvent);
+    window.addEventListener('snippet-created', handleSnippetCreatedEvent);
+
+    return () => {
+      window.removeEventListener('snippet-liked', handleSnippetLikedEvent);
+      window.removeEventListener('snippet-deleted', handleSnippetDeletedEvent);
+      window.removeEventListener('snippet-updated', handleSnippetUpdatedEvent);
+      window.removeEventListener('snippet-created', handleSnippetCreatedEvent);
+    };
   }, []);
 
   return (
@@ -282,35 +338,35 @@ export function SnippetFeed() {
                     </div>
                   )}
 
-                  {/* Visibility Dropdown */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1">
-                        <Lock className="w-3.5 h-3.5 text-purple-400" />
-                        <span>Visibility</span>
-                      </span>
-                      {user?.role?.toLowerCase() === 'admin' ? (
-                        <span className="text-[10px] text-purple-400 font-extrabold flex items-center gap-0.5 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
-                          <ShieldCheck className="w-3 h-3 text-purple-400" /> Admin Unlocked
+                  {/* Visibility Dropdown (Visible only for PRO and Admin users) */}
+                  {isPro && (
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-300 mb-1 flex items-center justify-between">
+                        <span className="flex items-center gap-1">
+                          <Lock className="w-3.5 h-3.5 text-purple-400" />
+                          <span>Visibility</span>
                         </span>
-                      ) : user?.plan === 'PRO' ? (
-                        <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-0.5 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                          <Crown className="w-3 h-3 fill-amber-400 text-amber-400" /> PRO Unlocked
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-gray-400">Public & Own Private</span>
-                      )}
-                    </label>
-                    <select
-                      value={visibility}
-                      onChange={(e) => setVisibility(e.target.value)}
-                      className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">All Visibilities</option>
-                      <option value="public">Public Snippets</option>
-                      <option value="private">Private Snippets</option>
-                    </select>
-                  </div>
+                        {user?.role?.toLowerCase() === 'admin' ? (
+                          <span className="text-[10px] text-purple-400 font-extrabold flex items-center gap-0.5 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
+                            <ShieldCheck className="w-3 h-3 text-purple-400" /> Admin Unlocked
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-amber-400 font-extrabold flex items-center gap-0.5 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                            <Crown className="w-3 h-3 fill-amber-400 text-amber-400" /> PRO Unlocked
+                          </span>
+                        )}
+                      </label>
+                      <select
+                        value={visibility}
+                        onChange={(e) => setVisibility(e.target.value)}
+                        className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-xs text-white outline-none focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">All Visibilities</option>
+                        <option value="public">Public Snippets</option>
+                        <option value="private">Private Snippets</option>
+                      </select>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs font-semibold text-gray-300 mb-1">Tag</label>
@@ -346,7 +402,6 @@ export function SnippetFeed() {
                         <option value="createdAt">Date Created</option>
                         <option value="aiScore">✨ AI Quality Score</option>
                         <option value="title">Title</option>
-                        <option value="views">Views</option>
                         <option value="likes">Likes</option>
                         <option value="bookmarksCount">Bookmarks</option>
                       </select>
@@ -556,6 +611,13 @@ export function SnippetFeed() {
                 if (updated && updated.id) {
                   setSnippets(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s));
                 }
+              }}
+              onDeleteSuccess={(deletedId) => {
+                setSnippets(prev => {
+                  const updatedList = prev.filter(s => s.id !== deletedId);
+                  setSelectedSnippet(updatedList.length > 0 ? updatedList[0] : null);
+                  return updatedList;
+                });
               }}
             />
           ) : (

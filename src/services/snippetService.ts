@@ -124,7 +124,13 @@ export const createSnippet = async (data: SnippetData): Promise<any> => {
   });
 
   const s = resData.snippet || resData.data;
-  return normalizeSnippet(s);
+  const normalized = normalizeSnippet(s);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('snippet-created', { detail: { snippet: normalized } }));
+  }
+
+  return normalized;
 };
 
 /**
@@ -133,14 +139,26 @@ export const createSnippet = async (data: SnippetData): Promise<any> => {
 export const updateSnippet = async (id: string, data: Partial<SnippetData>): Promise<any> => {
   const resData = await apiClient.put(`/snippets/${id}`, data);
   const s = resData.snippet || resData.data;
-  return normalizeSnippet(s);
+  const normalized = normalizeSnippet(s);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('snippet-updated', { detail: { snippet: normalized } }));
+  }
+
+  return normalized;
 };
 
 /**
  * Deletes a snippet.
  */
 export const deleteSnippet = async (id: string): Promise<any> => {
-  return apiClient.delete(`/snippets/${id}`);
+  const res = await apiClient.delete(`/snippets/${id}`);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('snippet-deleted', { detail: { snippetId: id } }));
+  }
+
+  return res;
 };
 
 /**
