@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Users, Code2, AlertCircle, Loader2, Tag, FileText, Globe } from 'lucide-react';
+import { Users, Code2, AlertCircle, Loader2, Tag, FileText, Globe, Crown } from 'lucide-react';
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 import { 
   getDashboardSummary, 
@@ -131,7 +132,7 @@ export function AdminDashboard() {
           </div>
 
           {/* Interactive Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
             {/* Total Users */}
             <div 
               onClick={() => navigate('/admin/users')}
@@ -149,6 +150,27 @@ export function AdminDashboard() {
                 </div>
                 <div className="bg-blue-600/20 p-3 rounded-xl border border-blue-500/20">
                   <Users className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Pro Subscriptions */}
+            <div 
+              onClick={() => navigate('/admin/subscriptions')}
+              className="bg-gray-800 border border-gray-700 hover:border-amber-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-xs font-medium mb-1">Pro Users</p>
+                  <p className="text-xl font-bold text-amber-400 group-hover:text-amber-300 transition-colors">
+                    Subscriptions
+                  </p>
+                  <p className="text-amber-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                    Manage Pro &rarr;
+                  </p>
+                </div>
+                <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-500/20">
+                  <Crown className="w-6 h-6 text-amber-400" />
                 </div>
               </div>
             </div>
@@ -219,24 +241,25 @@ export function AdminDashboard() {
             {/* System Audit Logs */}
             <div 
               onClick={() => navigate('/admin/logs')}
-              className="bg-gray-800 border border-gray-700 hover:border-amber-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-rose-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-400 text-xs font-medium mb-1">System Logs</p>
-                  <p className="text-xl font-bold text-white group-hover:text-amber-400 transition-colors">
+                  <p className="text-xl font-bold text-white group-hover:text-rose-400 transition-colors">
                     Audit Logs
                   </p>
-                  <p className="text-amber-400 text-xs mt-2 flex items-center gap-1 font-medium">
+                  <p className="text-rose-400 text-xs mt-2 flex items-center gap-1 font-medium">
                     View logs &rarr;
                   </p>
                 </div>
-                <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-500/20">
-                  <FileText className="w-6 h-6 text-amber-400" />
+                <div className="bg-rose-600/20 p-3 rounded-xl border border-rose-500/20">
+                  <FileText className="w-6 h-6 text-rose-400" />
                 </div>
               </div>
             </div>
           </div>
+
 
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

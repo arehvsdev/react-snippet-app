@@ -25,6 +25,8 @@ const ManageTags = lazy(() => import("../components/admin/ManageTags").then(m =>
 const ManageCategories = lazy(() => import("../components/admin/ManageCategories").then(m => ({ default: m.ManageCategories })));
 const ManageUsers = lazy(() => import("../components/admin/ManageUsers").then(m => ({ default: m.ManageUsers })));
 const ActivityLogs = lazy(() => import("../components/admin/ActivityLogs").then(m => ({ default: m.ActivityLogs })));
+const ManageSubscriptions = lazy(() => import("../components/admin/ManageSubscriptions").then(m => ({ default: m.ManageSubscriptions })));
+
 
 // 404 Not Found fallback component
 const NotFound = () => (
@@ -78,8 +80,10 @@ const AppRoutes = () => {
             <Route path="/admin/tags" element={<ManageTags />} />
             <Route path="/admin/categories" element={<ManageCategories />} />
             <Route path="/admin/users" element={<ManageUsers />} />
+            <Route path="/admin/subscriptions" element={<ManageSubscriptions />} />
             <Route path="/admin/logs" element={<ActivityLogs />} />
           </Route>
+
 
           {/* Redirects for alternative paths */}
           <Route path="/create-snippet" element={<Navigate to="/create" replace />} />

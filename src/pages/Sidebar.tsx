@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bookmark, Code2, Home, CreditCard, Settings, X } from 'lucide-react';
+import { Bookmark, Code2, Home, CreditCard, Settings, X, Crown } from 'lucide-react';
+
 import { useNavigate } from 'react-router';
 import { useAuth } from '../layouts/AuthContext';
 import { getCategories, getUserBookmarks } from '../services/snippetService';
@@ -170,7 +171,7 @@ export function Sidebar({ activeCategory, onCategorySelect, isOpenMobile = false
 
       {/* Admin Section (conditional) */}
       {user?.role?.toLowerCase() === 'admin' && (
-        <div className="mt-6 pt-6 border-t border-gray-700/80">
+        <div className="mt-6 pt-6 border-t border-gray-700/80 space-y-1">
           <button
             type="button"
             onClick={() => handleNavClick('/admin/dashboard')}
@@ -179,8 +180,17 @@ export function Sidebar({ activeCategory, onCategorySelect, isOpenMobile = false
             <Settings className="w-5 h-5 text-purple-400" />
             <span className="font-semibold text-sm">Admin Panel</span>
           </button>
+          <button
+            type="button"
+            onClick={() => handleNavClick('/admin/subscriptions')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-gray-700/80 hover:text-white transition-colors min-h-[44px] cursor-pointer"
+          >
+            <Crown className="w-5 h-5 text-amber-400" />
+            <span className="font-semibold text-sm">Subscriptions</span>
+          </button>
         </div>
       )}
+
     </div>
   );
 
