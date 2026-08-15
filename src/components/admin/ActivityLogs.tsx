@@ -47,23 +47,28 @@ export function ActivityLogs() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (overrideParams?: { page?: number; search?: string; type?: string; status?: string }) => {
     try {
       setLoading(true);
       setError(null);
+      const currentPage = overrideParams?.page !== undefined ? overrideParams.page : page;
+      const currentSearch = overrideParams?.search !== undefined ? overrideParams.search : searchQuery;
+      const currentType = overrideParams?.type !== undefined ? overrideParams.type : typeFilter;
+      const currentStatus = overrideParams?.status !== undefined ? overrideParams.status : statusFilter;
+
       const res = await getAuditLogs({
-        page,
+        page: currentPage,
         limit: 15,
-        type: typeFilter,
-        status: statusFilter,
-        search: searchQuery || undefined
+        type: currentType,
+        status: currentStatus,
+        search: currentSearch || undefined
       });
 
       if (res.success || res.logs || res.data) {
         const fetchedLogs = res.logs || res.data || [];
         setLogs(fetchedLogs);
         if (res.pagination) {
-          setTotalPages(res.pagination.pages || 1);
+          setTotalPages(res.pagination.pages || res.pagination.totalPages || 1);
           setTotalItems(res.pagination.total || fetchedLogs.length);
         }
       }
@@ -84,7 +89,7 @@ export function ActivityLogs() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchLogs();
+    fetchLogs({ page: 1 });
   };
 
   const handleResetFilters = () => {
@@ -92,7 +97,7 @@ export function ActivityLogs() {
     setTypeFilter('all');
     setStatusFilter('all');
     setPage(1);
-    setTimeout(() => fetchLogs(), 0);
+    fetchLogs({ page: 1, search: '', type: 'all', status: 'all' });
   };
 
   const getTypeBadgeStyle = (type: string) => {
@@ -141,7 +146,7 @@ export function ActivityLogs() {
               </div>
             </div>
             <button
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl border border-gray-700 text-sm font-medium transition-colors flex items-center gap-2 cursor-pointer self-start sm:self-auto"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -219,7 +224,7 @@ export function ActivityLogs() {
               <h3 className="text-lg font-bold text-white mb-1">Error Loading Audit Logs</h3>
               <p className="text-gray-400 text-sm mb-4">{error}</p>
               <button
-                onClick={fetchLogs}
+                onClick={() => fetchLogs()}
                 className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors cursor-pointer"
               >
                 Retry

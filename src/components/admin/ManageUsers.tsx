@@ -52,15 +52,20 @@ export function ManageUsers() {
   const [editActive, setEditActive] = useState(true);
   const [updating, setUpdating] = useState(false);
 
-  const loadUsers = async () => {
+  const loadUsers = async (overrideParams?: { page?: number; search?: string; role?: string; status?: string }) => {
     try {
       setLoading(true);
+      const currentPage = overrideParams?.page !== undefined ? overrideParams.page : page;
+      const currentSearch = overrideParams?.search !== undefined ? overrideParams.search : searchQuery;
+      const currentRole = overrideParams?.role !== undefined ? overrideParams.role : roleFilter;
+      const currentStatus = overrideParams?.status !== undefined ? overrideParams.status : statusFilter;
+
       const res = await getAllUsers({
-        page,
+        page: currentPage,
         limit: 10,
-        search: searchQuery || undefined,
-        role: roleFilter || undefined,
-        status: statusFilter || undefined
+        search: currentSearch || undefined,
+        role: currentRole || undefined,
+        status: currentStatus || undefined
       });
       if (res.success) {
         const rawUsers = res.users || res.data || [];
@@ -70,7 +75,7 @@ export function ManageUsers() {
         }));
         setUsers(formattedUsers);
         if (res.pagination) {
-          setTotalPages(res.pagination.totalPages || 1);
+          setTotalPages(res.pagination.totalPages || res.pagination.pages || 1);
         }
       }
     } catch (err: any) {
@@ -88,7 +93,7 @@ export function ManageUsers() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadUsers();
+    loadUsers({ page: 1 });
   };
 
   const handleClearFilters = () => {
@@ -96,8 +101,7 @@ export function ManageUsers() {
     setRoleFilter('');
     setStatusFilter('');
     setPage(1);
-    // Directly fetch clean state
-    setTimeout(() => loadUsers(), 0);
+    loadUsers({ page: 1, search: '', role: '', status: '' });
   };
 
   const handleToggleStatus = async (user: UserItem) => {

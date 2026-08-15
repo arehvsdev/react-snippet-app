@@ -98,14 +98,18 @@ export function ManageActivityLogs() {
   // Modal for detailed log inspection
   const [selectedLog, setSelectedLog] = useState<ActivityLogItem | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (overrideParams?: { page?: number; search?: string; actionType?: string }) => {
     try {
       setLoading(true);
+      const currentPage = overrideParams?.page !== undefined ? overrideParams.page : page;
+      const currentSearch = overrideParams?.search !== undefined ? overrideParams.search : searchQuery;
+      const currentActionType = overrideParams?.actionType !== undefined ? overrideParams.actionType : selectedActionType;
+
       const res = await getActivityLogs({
-        page,
+        page: currentPage,
         limit: 15,
-        actionType: selectedActionType !== 'all' ? selectedActionType : undefined,
-        search: searchQuery || undefined,
+        actionType: currentActionType !== 'all' ? currentActionType : undefined,
+        search: currentSearch || undefined,
       });
 
       if (res.success) {
@@ -130,14 +134,14 @@ export function ManageActivityLogs() {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    fetchLogs();
+    fetchLogs({ page: 1 });
   };
 
   const handleClearFilters = () => {
     setSearchQuery('');
     setSelectedActionType('all');
     setPage(1);
-    setTimeout(() => fetchLogs(), 0);
+    fetchLogs({ page: 1, search: '', actionType: 'all' });
   };
 
   const formatDate = (dateString: string) => {
@@ -177,7 +181,7 @@ export function ManageActivityLogs() {
             </div>
 
             <button
-              onClick={fetchLogs}
+              onClick={() => fetchLogs()}
               className="self-start sm:self-auto flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white rounded-xl border border-gray-700 transition-colors text-sm font-medium cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
