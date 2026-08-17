@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, Globe, Bookmark, ArrowLeft, Code, Camera } from 'lucide-react';
+import { Lock, Globe, Bookmark, ArrowLeft, Code, Camera, Loader2 } from 'lucide-react';
 import { CodeSnippet } from '../components/CodeSnippet';
 import { Layout } from './Layout';
 import { useAuth } from '../layouts/AuthContext';
@@ -18,7 +18,25 @@ export function Profile() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState<'my-snippets' | 'bookmarks'>('my-snippets');
-  const [currentUserData, setCurrentUserData] = useState<any>(null);
+  const [currentUserData, setCurrentUserData] = useState<any>(() => {
+    if (!user) return null;
+    const fallbackName = user.fullName || (user as any).name || 'User';
+    const fallbackUsername = user.username || (typeof fallbackName === 'string' ? fallbackName.toLowerCase().replace(/\s+/g, '') : 'user');
+    const rawCreatedAt = user.createdAt;
+    const formattedJoinedDate = rawCreatedAt && !isNaN(new Date(rawCreatedAt).getTime())
+      ? new Date(rawCreatedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+      : new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
+    return {
+      name: fallbackName,
+      email: user.email || '',
+      username: fallbackUsername,
+      bio: user.bio || 'Full-stack developer passionate about clean code and open source',
+      avatar: getAvatarUrl(user.avatar, fallbackName),
+      joinedDate: formattedJoinedDate,
+      phoneNumber: user.phoneNumber
+    };
+  });
   const [userSnippets, setUserSnippets] = useState<any[]>([]);
   const [bookmarkedSnippets, setBookmarkedSnippets] = useState<any[]>([]);
   
@@ -269,7 +287,7 @@ export function Profile() {
     }
   };
 
-  const userId = user?.id || user?.uid;
+  const userId = user?.id || user?.uid || (user as any)?._id;
 
   // Open edit/password modals when navigated from the header dropdown via query params
   useEffect(() => {
@@ -355,7 +373,16 @@ export function Profile() {
   }, [userId, bookmarkPage]);
 
   if (!user || !currentUserData) {
-    return null;
+    return (
+      <Layout>
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-8 text-white">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+            <p className="text-gray-400 text-sm font-medium">Loading user profile...</p>
+          </div>
+        </div>
+      </Layout>
+    );
   }
 
   const handleVisibilityToggle = async (snippetId: string, newVisibility: 'public' | 'private') => {
