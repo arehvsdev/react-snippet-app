@@ -162,8 +162,8 @@ export function ManageActivityLogs() {
 
   return (
     <Layout>
-      <div className="p-6 lg:p-8 bg-gray-900 min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-6 lg:p-8 bg-gray-900 min-h-screen w-full">
+        <div className="w-full mx-auto">
           {/* Header section */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
             <div>

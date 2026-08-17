@@ -7,7 +7,7 @@ import {
   Users, 
   CheckCircle2, 
   XCircle, 
-  IndianRupee, 
+  IndianRupee,
   Search, 
   ArrowLeft, 
   RefreshCw, 
@@ -233,8 +233,8 @@ export function ManageSubscriptions() {
 
   return (
     <Layout>
-      <div className="p-8 bg-gray-900 min-h-screen text-white">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-6 md:p-8 bg-gray-900 min-h-screen text-white w-full">
+        <div className="w-full mx-auto">
           
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -255,7 +255,7 @@ export function ManageSubscriptions() {
                   </span>
                 </div>
                 <p className="text-gray-400 text-sm mt-1">
-                  Monitor Pro tier users, subscription revenue metrics, and full transaction history
+                  Monitor Pro tier users, subscription plan details, and full transaction history
                 </p>
               </div>
             </div>
@@ -321,7 +321,7 @@ export function ManageSubscriptions() {
                 <div>
                   <p className="text-gray-400 text-xs font-medium mb-1">Total Revenue</p>
                   <p className="text-2xl font-bold text-emerald-400">
-                    {statsLoading ? '...' : `₹${stats.totalRevenue.toLocaleString()}`}
+                    {statsLoading ? '...' : `₹${stats.totalRevenue.toLocaleString('en-IN')}`}
                   </p>
                 </div>
                 <div className="bg-emerald-500/20 p-3 rounded-xl border border-emerald-500/20">
@@ -692,7 +692,7 @@ export function ManageSubscriptions() {
                               </td>
 
                               <td className="px-6 py-4 whitespace-nowrap font-semibold text-white">
-                                ₹{p.amount} <span className="text-xs font-normal text-gray-400">{p.currency || 'INR'}</span>
+                                ₹{(p.amount >= 100 ? p.amount / 100 : p.amount).toLocaleString('en-IN')} <span className="text-xs font-normal text-gray-400">{p.currency || 'INR'}</span>
                               </td>
 
                               <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-400 font-mono">

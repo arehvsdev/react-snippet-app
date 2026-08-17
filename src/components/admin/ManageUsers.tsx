@@ -180,8 +180,8 @@ export function ManageUsers() {
 
   return (
     <Layout>
-      <div className="p-8 bg-gray-900 min-h-screen text-white">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-6 md:p-8 bg-gray-900 min-h-screen text-white w-full">
+        <div className="w-full mx-auto">
           
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div className="flex items-center gap-3">

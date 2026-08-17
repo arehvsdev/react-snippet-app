@@ -129,8 +129,8 @@ export function ManageLanguages() {
 
   return (
     <Layout>
-      <div className="p-8 bg-gray-900 min-h-screen">
-        <div className="max-w-6xl mx-auto">
+      <div className="p-6 md:p-8 bg-gray-900 min-h-screen w-full">
+        <div className="w-full mx-auto">
           {/* Header with Back to Admin Dashboard Navigation Button */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div className="flex items-center gap-3">

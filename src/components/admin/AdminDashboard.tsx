@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../pages/Layout';
-import { Users, Code2, AlertCircle, Loader2, Tag, FileText, Globe, Crown } from 'lucide-react';
+import { Users, Code2, AlertCircle, Loader2, Tag, Globe, Crown } from 'lucide-react';
 
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
-import { 
-  getDashboardSummary, 
-  getDashboardUserGrowth, 
-  getDashboardSnippetLanguages, 
-  getDashboardWeeklyActivity 
+import {
+  getDashboardSummary,
+  getDashboardUserGrowth,
+  getDashboardSnippetLanguages,
+  getDashboardWeeklyActivity
 } from '../../services/adminDashboardService';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#6B7280'];
@@ -17,7 +17,7 @@ export function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Dashboard states
   const [summary, setSummary] = useState<any>({
     totalUsers: { value: 0, change: "+0.0%" },
@@ -124,139 +124,118 @@ export function AdminDashboard() {
 
   return (
     <Layout>
-      <div className="p-8 bg-gray-900 min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <div className="p-6 md:p-8 bg-gray-900 min-h-screen w-full">
+        <div className="w-full mx-auto">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
             <p className="text-gray-400 text-sm mt-1">Overview of platform metrics, growth analytics, and content counts.</p>
           </div>
 
           {/* Interactive Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 lg:gap-6 mb-8">
             {/* Total Users */}
-            <div 
+            <div
               onClick={() => navigate('/admin/users')}
-              className="bg-gray-800 border border-gray-700 hover:border-blue-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-blue-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">Total Users</p>
-                  <p className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-gray-400 text-xs font-medium mb-1 truncate">Total Users</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors truncate">
                     {usersCount.toLocaleString()}
                   </p>
-                  <p className="text-blue-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    Manage users &rarr;
-                  </p>
                 </div>
-                <div className="bg-blue-600/20 p-3 rounded-xl border border-blue-500/20">
+                <div className="bg-blue-600/20 p-3 rounded-xl border border-blue-500/20 shrink-0">
                   <Users className="w-6 h-6 text-blue-400" />
                 </div>
               </div>
+              <p className="text-blue-400 text-xs mt-3 flex items-center gap-1 font-medium whitespace-nowrap">
+                Manage users &rarr;
+              </p>
             </div>
 
             {/* Pro Subscriptions */}
-            <div 
+            <div
               onClick={() => navigate('/admin/subscriptions')}
-              className="bg-gray-800 border border-gray-700 hover:border-amber-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-amber-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">Pro Users</p>
-                  <p className="text-xl font-bold text-amber-400 group-hover:text-amber-300 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-gray-400 text-xs font-medium mb-1 truncate">Pro Users</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-amber-300 transition-colors truncate">
                     Subscriptions
                   </p>
-                  <p className="text-amber-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    Manage Pro &rarr;
-                  </p>
                 </div>
-                <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-500/20">
+                <div className="bg-amber-600/20 p-3 rounded-xl border border-amber-500/20 shrink-0">
                   <Crown className="w-6 h-6 text-amber-400" />
                 </div>
               </div>
+              <p className="text-amber-400 text-xs mt-3 flex items-center gap-1 font-medium whitespace-nowrap">
+                View subscriptions &rarr;
+              </p>
             </div>
 
             {/* Total Snippets */}
-            <div 
+            <div
               onClick={() => navigate('/snippet-feed')}
-              className="bg-gray-800 border border-gray-700 hover:border-green-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-green-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">Total Snippets</p>
-                  <p className="text-2xl font-bold text-white group-hover:text-green-400 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-gray-400 text-xs font-medium mb-1 truncate">Total Snippets</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-green-400 transition-colors truncate">
                     {snippetsCount.toLocaleString()}
                   </p>
-                  <p className="text-green-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    View feed &rarr;
-                  </p>
                 </div>
-                <div className="bg-green-600/20 p-3 rounded-xl border border-green-500/20">
+                <div className="bg-green-600/20 p-3 rounded-xl border border-green-500/20 shrink-0">
                   <Code2 className="w-6 h-6 text-green-400" />
                 </div>
               </div>
+              <p className="text-green-400 text-xs mt-3 flex items-center gap-1 font-medium whitespace-nowrap">
+                View feed &rarr;
+              </p>
             </div>
 
             {/* Languages Count */}
-            <div 
+            <div
               onClick={() => navigate('/admin/languages')}
-              className="bg-gray-800 border border-gray-700 hover:border-indigo-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-indigo-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">Languages</p>
-                  <p className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-gray-400 text-xs font-medium mb-1 truncate">Languages</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-indigo-400 transition-colors truncate">
                     {languagesCount.toLocaleString()}
                   </p>
-                  <p className="text-indigo-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    Manage languages &rarr;
-                  </p>
                 </div>
-                <div className="bg-indigo-600/20 p-3 rounded-xl border border-indigo-500/20">
+                <div className="bg-indigo-600/20 p-3 rounded-xl border border-indigo-500/20 shrink-0">
                   <Globe className="w-6 h-6 text-indigo-400" />
                 </div>
               </div>
+              <p className="text-indigo-400 text-xs mt-3 flex items-center gap-1 font-medium whitespace-nowrap">
+                Manage languages &rarr;
+              </p>
             </div>
 
             {/* Tags Count */}
-            <div 
+            <div
               onClick={() => navigate('/admin/tags')}
-              className="bg-gray-800 border border-gray-700 hover:border-purple-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
+              className="bg-gray-800 border border-gray-700 hover:border-purple-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group flex flex-col justify-between"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">Tags</p>
-                  <p className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-gray-400 text-xs font-medium mb-1 truncate">Tags</p>
+                  <p className="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors truncate">
                     {tagsCount.toLocaleString()}
                   </p>
-                  <p className="text-purple-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    Manage tags &rarr;
-                  </p>
                 </div>
-                <div className="bg-purple-600/20 p-3 rounded-xl border border-purple-500/20">
+                <div className="bg-purple-600/20 p-3 rounded-xl border border-purple-500/20 shrink-0">
                   <Tag className="w-6 h-6 text-purple-400" />
                 </div>
               </div>
-            </div>
-
-            {/* System Audit Logs */}
-            <div 
-              onClick={() => navigate('/admin/logs')}
-              className="bg-gray-800 border border-gray-700 hover:border-rose-500/50 rounded-xl p-5 shadow-lg transition-all cursor-pointer hover:scale-[1.02] group"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-gray-400 text-xs font-medium mb-1">System Logs</p>
-                  <p className="text-xl font-bold text-white group-hover:text-rose-400 transition-colors">
-                    Audit Logs
-                  </p>
-                  <p className="text-rose-400 text-xs mt-2 flex items-center gap-1 font-medium">
-                    View logs &rarr;
-                  </p>
-                </div>
-                <div className="bg-rose-600/20 p-3 rounded-xl border border-rose-500/20">
-                  <FileText className="w-6 h-6 text-rose-400" />
-                </div>
-              </div>
+              <p className="text-purple-400 text-xs mt-3 flex items-center gap-1 font-medium whitespace-nowrap">
+                Manage tags &rarr;
+              </p>
             </div>
           </div>
 
