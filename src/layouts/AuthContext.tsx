@@ -1,29 +1,31 @@
+/**
+ * Auth & Subscription Redux Integration Facade (useAuth hook)
+ * Serves as a React Context wrapper connecting components seamlessly to the Redux store.
+ * Delegates all state reads (`user`, `isAuthenticated`, `loading`) and state updates (`login`, `logout`, `setPlan`)
+ * to Redux actions and async thunks.
+ */
 import {
   createContext,
   useContext,
-  useState,
   useEffect,
   useCallback,
   type ReactNode,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { getSubscription } from "../services/paymentService";
-import { getMe, type UserProfileResponse } from "../services/authService";
 import { Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "../store";
+import {
+  validateSession,
+  setUser,
+  logout as logoutAction,
+  updateUser as updateUserAction,
+  setPlan as setPlanAction,
+  togglePlan as togglePlanAction,
+  refreshSubscriptionThunk,
+  type User,
+} from "../store/authSlice";
 
-export interface User {
-  uid: string;
-  id?: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  role: string;
-  createdAt: string;
-  username?: string;
-  bio?: string;
-  avatar?: string;
-  plan?: "FREE" | "PRO";
-}
+export type { User };
 
 interface AuthContextType {
   user: User | null;
@@ -33,51 +35,32 @@ interface AuthContextType {
   updateUser: (userData: User) => void;
   setPlan: (plan: "FREE" | "PRO") => void;
   togglePlan: () => void;
-  /** Fetches live subscription from backend and syncs AuthContext + localStorage. */
+  /** Fetches live subscription from backend and syncs Redux store + localStorage. */
   refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+/**
+ * AuthProvider Component
+ * Subscribes to Redux state via `useAppSelector` and dispatches Redux actions.
+ */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
+  // Read state directly from Redux Toolkit store
+  const { user, loading, isAuthenticated } = useAppSelector((state) => state.auth);
+
   /**
-   * Validates stored JWT session token on app startup via GET /api/auth/me.
-   * Does NOT trust localStorage user payload alone.
+   * Validates stored JWT session token on app startup via Redux thunk.
    */
   useEffect(() => {
-    const validateSession = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        localStorage.removeItem("user");
-        setUser(null);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const currentUser: UserProfileResponse = await getMe();
-        localStorage.setItem("user", JSON.stringify(currentUser));
-        setUser(currentUser);
-      } catch {
-        // Token is invalid or expired: purge credentials
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    validateSession();
-  }, []);
+    dispatch(validateSession());
+  }, [dispatch]);
 
   /**
-   * Authenticates user upon login form submission & persists token.
+   * Authenticates user upon login form submission & persists to Redux store.
    */
   const login = (userData: User & { token?: string }) => {
     const { token, ...userWithoutToken } = userData;
@@ -88,79 +71,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem("token", token);
     }
     localStorage.setItem("user", JSON.stringify(userWithoutToken));
-    setUser(userWithoutToken);
+
+    // Dispatch Redux action to store user
+    dispatch(setUser(userWithoutToken));
+
+    // Refresh live subscription plan from server
     setTimeout(() => {
-      refreshSubscription();
+      dispatch(refreshSubscriptionThunk());
     }, 500);
-    const targetRoute = userWithoutToken.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/snippet-feed";
+
+    const targetRoute =
+      userWithoutToken.role?.toLowerCase() === "admin"
+        ? "/admin/dashboard"
+        : "/snippet-feed";
     navigate(targetRoute);
   };
 
   /**
-   * Signs out the authenticated user and clears localStorage credentials.
+   * Signs out the authenticated user and clears Redux + localStorage credentials.
    */
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    dispatch(logoutAction());
     navigate("/");
   };
 
   const updateUser = (userData: User) => {
-    const updated = { ...userData, plan: userData.plan || user?.plan || "FREE" };
-    localStorage.setItem("user", JSON.stringify(updated));
-    setUser(updated);
+    dispatch(updateUserAction(userData));
   };
 
   const setPlan = (newPlan: "FREE" | "PRO") => {
-    if (!user) return;
-    const updated = { ...user, plan: newPlan };
-    localStorage.setItem("user", JSON.stringify(updated));
-    setUser(updated);
+    dispatch(setPlanAction(newPlan));
   };
 
   const togglePlan = () => {
-    if (!user) return;
-    const newPlan = user.plan === "PRO" ? "FREE" : "PRO";
-    setPlan(newPlan);
+    dispatch(togglePlanAction());
   };
 
-  /**
-   * Synchronizes the authenticated user's subscription with the backend.
-   * Dispatches 'subscription-updated' global window event on update.
-   */
   const refreshSubscription = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-
-    try {
-      const subscription = await getSubscription();
-      setUser((previousUser) => {
-        if (!previousUser) return previousUser;
-
-        const updatedUser = {
-          ...previousUser,
-          plan: subscription.plan,
-        };
-
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        return updatedUser;
-      });
-
-      // Broadcast subscription update event across components
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("subscription-updated", { detail: subscription }));
-      }
-    } catch {
-      // Silently fail — UI preserves current state
-    }
-  }, []);
+    await dispatch(refreshSubscriptionThunk());
+  }, [dispatch]);
 
   const value = {
     user,
     login,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated,
     updateUser,
     setPlan,
     togglePlan,
@@ -182,6 +137,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+/**
+ * Custom hook to consume Redux-backed AuthContext in functional components.
+ */
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
